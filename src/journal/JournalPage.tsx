@@ -76,6 +76,7 @@ function entryLabel(entry: JournalEntry, language: AppLanguage) {
 
 function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folders, folderId, onFolderChange, entries, currentEntryId, linkedTaskTitle, onUnlinkTask, onCancel, language = 'en' }: JournalFormProps) {
   const t = (text: string) => translate(language, text)
+  const [composeTab, setComposeTab] = useState<'brain' | 'folder' | 'link'>('brain')
   const [photoError, setPhotoError] = useState('')
   const [saveError, setSaveError] = useState(false)
   const [loadingPhoto, setLoadingPhoto] = useState(false)
@@ -96,6 +97,11 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
   const canSave = !loadingPhoto && (draft.text.trim().length > 0 || !!draft.photo)
   const selectedLanguage = dictationLanguages.find(([code]) => code === dictation.language) ?? dictationLanguages[0]
   const selectedEntry = entries.find(entry => entry.id === draft.linkedEntryId)
+  const selectedFolder = folders?.find(folder => folder.id === folderId)
+  const composeTabs = ['brain', 'folder', 'link'] as const
+  const composeTabLabels = language === 'ru'
+    ? { brain: 'Мысли', folder: 'Папка', link: 'Связь' }
+    : { brain: 'Brain dump', folder: 'Folder', link: 'Link' }
 
   useEffect(() => {
     if (!onCancel || !textArea.current) return
@@ -174,13 +180,34 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
         submitted.current = true
         dictation.reset()
         setPhotoError('')
+        if (!onCancel) setComposeTab('brain')
       }
     }}>
       {linkedTaskTitle !== undefined && onUnlinkTask && <div className="journal-task-link">
         <span>{t('Linked to:')} <strong>{linkedTaskTitle}</strong></span>
         <button type="button" className="journal-icon" aria-label={t('Unlink task')} onClick={onUnlinkTask}><X size={17} aria-hidden="true" /></button>
       </div>}
-      {!onCancel && <label htmlFor={id}>{t('Brain dump')}</label>}
+      {!onCancel && <div className="journal-compose-tabs" role="tablist" aria-label={language === 'ru' ? 'Создать запись' : 'Create an entry'}
+        onKeyDown={event => {
+          const index = composeTabs.indexOf(composeTab)
+          const next = event.key === 'ArrowRight' ? (index + 1) % composeTabs.length
+            : event.key === 'ArrowLeft' ? (index + composeTabs.length - 1) % composeTabs.length
+              : event.key === 'Home' ? 0 : event.key === 'End' ? composeTabs.length - 1 : -1
+          if (next < 0) return
+          event.preventDefault()
+          const tab = composeTabs[next]
+          setComposeTab(tab)
+          requestAnimationFrame(() => document.getElementById(`${id}-tab-${tab}`)?.focus())
+        }}>
+        {composeTabs.map(tab => <button type="button" role="tab" key={tab} id={`${id}-tab-${tab}`}
+          aria-selected={composeTab === tab} aria-controls={`${id}-panel-${tab}`} tabIndex={composeTab === tab ? 0 : -1}
+          onClick={() => setComposeTab(tab)}>{composeTabLabels[tab]}</button>)}
+      </div>}
+      {!onCancel && composeTabs.filter(tab => tab !== composeTab).map(tab =>
+        <div key={tab} role="tabpanel" id={`${id}-panel-${tab}`} aria-labelledby={`${id}-tab-${tab}`} hidden />)}
+      {(onCancel || composeTab === 'brain') && <div className="journal-compose-panel" role={onCancel ? undefined : 'tabpanel'}
+        id={onCancel ? undefined : `${id}-panel-brain`} aria-labelledby={onCancel ? undefined : `${id}-tab-brain`}>
+      {!onCancel && <label className="journal-sr-only" htmlFor={id}>{t('Brain dump')}</label>}
       <textarea
         ref={textArea}
         id={id}
@@ -208,13 +235,17 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
           onDraftChange(current => ({ ...current, text }))
         }}
       />
-      {!onCancel && folders && onFolderChange && <div className="journal-form-folder">
+      </div>}
+      {!onCancel && composeTab === 'folder' && folders && onFolderChange && <div className="journal-compose-panel journal-form-folder"
+        role="tabpanel" id={`${id}-panel-folder`} aria-labelledby={`${id}-tab-folder`}>
         <span className="journal-form-folder-label">{t('Save in folder')}</span>
         <FolderPicker label={t('Save in folder')} value={folderId ?? ''} dialogClassName="journal-sheet--centered"
           options={[{ value: '', label: t('No folder') }, ...folders.map(folder => ({ value: folder.id, label: folder.name, folder }))]}
           onChange={onFolderChange} />
       </div>}
-      <div className="journal-note-link">
+      {(onCancel || composeTab === 'link') && <div className={onCancel ? 'journal-note-link' : 'journal-compose-panel journal-note-link'}
+        role={onCancel ? undefined : 'tabpanel'} id={onCancel ? undefined : `${id}-panel-link`}
+        aria-labelledby={onCancel ? undefined : `${id}-tab-link`}>
         <button type="button" className="journal-folder-trigger journal-note-link-trigger" aria-haspopup="dialog"
           onClick={() => linkDialog.current?.showModal()}>
           <span className="journal-form-folder-label">{language === 'ru' ? 'Связать заметку' : 'Link a note'}</span>
@@ -241,7 +272,13 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
           <button type="button" className="journal-icon" aria-label={language === 'ru' ? 'Убрать связь' : 'Remove linked note'}
             onClick={() => onDraftChange(current => ({ ...current, linkedEntryId: undefined }))}><X size={16} aria-hidden="true" /></button>
         </div>}
-      </div>
+      </div>}
+      {!onCancel && ((selectedFolder && composeTab !== 'folder') || (draft.linkedEntryId && composeTab !== 'link')) &&
+        <div className="journal-compose-selection" aria-label={language === 'ru' ? 'Выбор для новой записи' : 'Selections for this entry'}>
+        {selectedFolder && composeTab !== 'folder' && <span><Folder size={14} aria-hidden="true" />{selectedFolder.name}</span>}
+        {draft.linkedEntryId && composeTab !== 'link' && <span><Link2 size={14} aria-hidden="true" />
+          {selectedEntry ? entryLabel(selectedEntry, language) : language === 'ru' ? 'Связанная запись удалена' : 'Linked note was deleted'}</span>}
+      </div>}
       {draft.photo && (
         <div className="journal-photo-preview">
           <img src={draft.photo} alt={t('Attached photo preview')} />
@@ -249,14 +286,14 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
         </div>
       )}
       {photoError && <p className="journal-photo-error" role="alert">{t(photoError)}</p>}
-      <div className="journal-location">
+      {(draft.location || onCancel) && <div className="journal-location">
         {draft.location ? <span><MapPin size={15} aria-hidden="true" />{locationLabel(draft.location, language)}
           <button type="button" className="journal-icon" aria-label={language === 'ru' ? 'Убрать место' : 'Remove location'}
             onClick={() => onDraftChange(current => ({ ...current, location: undefined }))}><X size={15} /></button></span>
           : <button type="button" className="journal-location-add" disabled={locating} onClick={addLocation}>
             <MapPin size={15} aria-hidden="true" />{locating ? (language === 'ru' ? 'Определяем место…' : 'Finding location…') : (language === 'ru' ? 'Добавить место' : 'Add location')}
           </button>}
-      </div>
+      </div>}
       {locationMessage && <p className="journal-local-note" role="status">{locationMessage}</p>}
       {dictation.message && <p className="journal-dictation-message" role="status">{t(dictation.message)}</p>}
       {saveError && <p className="journal-photo-error" role="alert">{t('Couldn’t save this entry. Your draft is still here.')}</p>}
@@ -266,13 +303,16 @@ function JournalForm({ id, draft, draftSaveError, onDraftChange, onSubmit, folde
       <div className="journal-form-actions">
         <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={attachPhoto} hidden />
         <button type="button" className="journal-icon journal-photo-action" aria-label={t(draft.photo ? 'Replace photo' : 'Attach photo')} disabled={loadingPhoto} onClick={() => fileInput.current?.click()}><ImagePlus size={19} /></button>
+        {!onCancel && !draft.location && <button type="button" className="journal-icon journal-location-action"
+          aria-label={language === 'ru' ? 'Добавить место' : 'Add location'} title={language === 'ru' ? 'Добавить место' : 'Add location'}
+          disabled={locating} onClick={addLocation}><MapPin size={19} aria-hidden="true" /></button>}
         {!onCancel && (
           <button
             type="button"
             className="journal-icon journal-voice-action"
             aria-label={t(dictation.status === 'listening' ? 'Stop dictation' : dictating ? 'Cancel dictation' : 'Start dictation')}
             data-listening={dictating}
-            onClick={dictation.toggle}
+            onClick={() => { if (!onCancel) setComposeTab('brain'); dictation.toggle() }}
           >
             {dictating ? <Square size={16} fill="currentColor" aria-hidden="true" /> : <Mic size={19} aria-hidden="true" />}
           </button>
@@ -393,13 +433,13 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
           <img src={entry.photo} alt="" loading="lazy" />
         </button>}
         <div className="journal-entry-copy">
+          {entry.text && <p>{entry.text}</p>}
           <div className="journal-entry-time">
             <time dateTime={entry.createdAt}>{journalDate(entry.createdAt, language)} · {journalTime(entry.createdAt, language, timeFormat)}</time>
             {entry.updatedAt && <span title={journalDate(entry.updatedAt, language)}>{t('Edited')}</span>}
             {entry.location && <span className="journal-entry-location"><MapPin size={12} aria-hidden="true" />{locationLabel(entry.location, language)}</span>}
             {folder && <span className="journal-entry-folder"><FolderGlyph {...folder} size={12} />{folder.name}</span>}
           </div>
-          {entry.text && <p>{entry.text}</p>}
           {entry.linkedEntryId && (linkedEntry
             ? <button type="button" className="journal-entry-linked" onClick={() => onOpenLinked(linkedEntry.id)}>
               <Link2 size={14} aria-hidden="true" />{entryLabel(linkedEntry, language)}
