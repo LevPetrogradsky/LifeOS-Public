@@ -1,5 +1,6 @@
 import { journalFolderColors, journalFolderIcons, maxJournalFolderNameLength, type JournalEntry, type JournalFolder } from '../data.ts'
 import { isJournalPhoto } from './photo.ts'
+import { journalDevices } from './device.ts'
 import { validApproximateLocation } from './location.ts'
 
 export type CloudKind = 'folder' | 'entry'
@@ -30,6 +31,7 @@ export function validCloudFolder(value: unknown): value is JournalFolder {
 export function validCloudEntry(value: unknown): value is JournalEntry {
   return record(value) && id(value.id) && typeof value.text === 'string' &&
     value.text.length <= 3_000_000 && timestamp(value.createdAt) &&
+    (value.createdOn === undefined || journalDevices.some(device => device === value.createdOn)) &&
     (value.updatedAt === undefined || timestamp(value.updatedAt)) &&
     (value.photo === undefined || isJournalPhoto(value.photo)) &&
     (value.taskId === undefined || id(value.taskId)) &&

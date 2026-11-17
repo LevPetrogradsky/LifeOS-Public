@@ -97,7 +97,6 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
   const [orderStatus, setOrderStatus] = useState('')
   const heading = useRef<HTMLHeadingElement>(null)
   const editorDialog = useRef<HTMLDialogElement>(null)
-  const editorInput = useRef<HTMLInputElement>(null)
   const previousScreen = useRef(screen)
   const editing = editor !== null
 
@@ -106,7 +105,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     if (!dialog) return
     if (editing && !dialog.open) {
       dialog.showModal()
-      editorInput.current?.focus()
+      dialog.querySelector<HTMLButtonElement>('header button')?.focus({ preventScroll: true })
     } else if (!editing && dialog.open) {
       dialog.close()
     }
@@ -332,7 +331,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
       onClose={() => { if (!editorDialog.current?.open) setEditor(null) }}>
     {editor && <form className="life-main-editor" onSubmit={saveTask}>
       <label htmlFor="life-main-task-title" className="journal-sr-only">{t('Task name')}</label>
-      <input ref={editorInput} id="life-main-task-title" placeholder={t('Task name')} maxLength={140} value={editor.title} onChange={event => setEditor({ ...editor, title: event.target.value })} />
+      <input id="life-main-task-title" placeholder={t('Task name')} maxLength={140} value={editor.title} onChange={event => setEditor({ ...editor, title: event.target.value })} />
       <span id="life-main-task-list-label" className="life-main-editor-label">{t('List')}</span>
       <div className="life-main-filters life-main-editor-lists" role="group" aria-labelledby="life-main-task-list-label">
         {taskLists.map(list => {

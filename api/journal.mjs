@@ -48,6 +48,9 @@ function validApproximateLocation(value) {
   return typeof latitude === "number" && typeof longitude === "number" && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 && Math.abs(latitude * 10 - Math.round(latitude * 10)) < 1e-8 && Math.abs(longitude * 10 - Math.round(longitude * 10)) < 1e-8;
 }
 
+// src/journal/device.ts
+var journalDevices = ["iphone", "ipad", "android", "windows", "mac", "unknown"];
+
 // src/data.ts
 var shortcuts = [
   { id: "journal", label: "Journal" },
@@ -68,7 +71,7 @@ function validCloudFolder(value) {
   return record(value) && id(value.id) && typeof value.name === "string" && value.name.length > 0 && value.name.length <= maxJournalFolderNameLength && value.name === value.name.trim() && (value.order === void 0 || typeof value.order === "number" && Number.isSafeInteger(value.order) && value.order >= 0) && (value.color === void 0 || journalFolderColors.some((color) => color === value.color)) && (value.icon === void 0 || journalFolderIcons.some((icon) => icon === value.icon));
 }
 function validCloudEntry(value) {
-  return record(value) && id(value.id) && typeof value.text === "string" && value.text.length <= 3e6 && timestamp(value.createdAt) && (value.updatedAt === void 0 || timestamp(value.updatedAt)) && (value.photo === void 0 || isJournalPhoto(value.photo)) && (value.taskId === void 0 || id(value.taskId)) && (value.linkedEntryId === void 0 || id(value.linkedEntryId) && value.linkedEntryId !== value.id) && (value.location === void 0 || validApproximateLocation(value.location)) && (value.folderId === void 0 || id(value.folderId));
+  return record(value) && id(value.id) && typeof value.text === "string" && value.text.length <= 3e6 && timestamp(value.createdAt) && (value.createdOn === void 0 || journalDevices.some((device) => device === value.createdOn)) && (value.updatedAt === void 0 || timestamp(value.updatedAt)) && (value.photo === void 0 || isJournalPhoto(value.photo)) && (value.taskId === void 0 || id(value.taskId)) && (value.linkedEntryId === void 0 || id(value.linkedEntryId) && value.linkedEntryId !== value.id) && (value.location === void 0 || validApproximateLocation(value.location)) && (value.folderId === void 0 || id(value.folderId));
 }
 function validCloudItem(value) {
   if (!record(value) || value.kind !== "folder" && value.kind !== "entry" || !id(value.id) || typeof value.deleted !== "boolean") return false;

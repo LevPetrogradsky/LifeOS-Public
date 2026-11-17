@@ -2,11 +2,12 @@ import MainDashboard from './MainDashboard'
 import MainFocus from './MainFocus'
 import TaskHistory from './TaskHistory'
 import AskLifeOS from './home/AskLifeOS'
-import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode, type SetStateAction } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent, type ReactNode, type SetStateAction } from 'react'
 import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
 import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
+import { detectJournalDevice } from './journal/device'
 import { clearJournalDraft, readJournalDraft, writeJournalDraft } from './journal/drafts'
 import { JournalCloudSync, guestJournalCount, withJournalChanges } from './journal/cloud-sync'
 import { cloudConsentKey, guestRecoveryStorageKey, normalizeRecoveryCode, readRecoveryCode } from './journal/guest-recovery'
@@ -24,6 +25,7 @@ import { completionKey, initialOnboardingMode } from './onboarding/state'
 import { translate, type AppLanguage } from './language'
 import './reflection-confirmation.css'
 import './mobile-navigation.css'
+import { mobileNavigationLayout } from './mobile-navigation'
 
 type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history' | 'presets'
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
@@ -494,7 +496,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     const saved = update(current => ({
       ...current,
       journal: [{
-        ...draft, id: crypto.randomUUID(), createdAt: new Date().toISOString(), taskId: journalTaskId,
+        ...draft, id: crypto.randomUUID(), createdAt: new Date().toISOString(), createdOn: detectJournalDevice(navigator), taskId: journalTaskId,
         folderId: current.journalFolders?.some(folder => folder.id === folderId) ? folderId : undefined,
       }, ...current.journal],
     }))
@@ -617,7 +619,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   const returnLabel = showHome ? 'Back to Home' : 'Back to Settings'
   const returnFromSection = () => navigate(showHome ? 'main' : 'settings')
   const reflectionReturnLabel = reflectionReturnView === 'main' ? 'Back to Home'
-    : reflectionReturnView === 'ask' ? 'Back to Ask LifeOS'
+    : reflectionReturnView === 'ask' ? 'Back to Guide'
       : reflectionReturnView === 'journal' ? 'Back to Journal'
         : reflectionReturnView === 'tasks' ? 'Back to Tasks' : 'Back to Settings'
 
@@ -656,7 +658,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           else startFocus()
         }} />
     })}
-    {showAskLifeOS && <NavButton icon={<MessageCircle size={iconSize} />} label={t('Ask LifeOS')} selected={view === 'ask'} onClick={() => navigate('ask')} />}
+    {showAskLifeOS && <NavButton icon={<MessageCircle size={iconSize} />} label={t('Guide')} selected={view === 'ask'} onClick={() => navigate('ask')} />}
     {bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
   </>
 
@@ -761,8 +763,17 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     {undoNotice}
   </>)
 
+  const visibleNavCount = Number(showHome) + visibleShortcuts.filter(({ id }) => inBar(id)).length + Number(showAskLifeOS) + 1
+  const mobileNavLayout = mobileNavigationLayout(visibleNavCount)
+  const extraNavHeight = (mobileNavLayout.rows - 1) * 66
+  const mobileNavStyle = {
+    '--life-mobile-nav-height': `calc(${78 + extraNavHeight}px + env(safe-area-inset-bottom))`,
+    '--life-mobile-nav-extra': `${extraNavHeight}px`,
+    '--life-mobile-nav-columns': mobileNavLayout.columns,
+  } as CSSProperties
+
   return (
-    <div className={view === 'flow' || view === 'focus-history' ? 'app-shell flow-shell' : 'app-shell'}>
+    <div className={view === 'flow' || view === 'focus-history' ? 'app-shell flow-shell' : 'app-shell'} style={mobileNavStyle}>
       <aside className="sidebar">
         {renderBrand(20)}
         <nav aria-label="Main navigation">{renderNavigation(19)}</nav>
@@ -808,7 +819,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
         />}
 
         {view === 'ask' && <main className="life-main life-main-guide-page">
-          <h1>Ask LifeOS</h1>
+          <h1>{t('Guide')}</h1>
           <AskLifeOS language={language} actions={{
             tasks: () => navigate('tasks'),
             journal: showJournal ? () => navigate('journal') : undefined,

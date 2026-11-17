@@ -142,8 +142,10 @@
 
 .journal-form-new {
   box-shadow: none;
-  padding: 14px;
-  border-radius: 15px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .journal-compose-tabs {
@@ -152,9 +154,9 @@
   gap: 4px;
   padding: 4px;
   margin-bottom: 12px;
-  border: 1px solid var(--journal-border);
+  border: 0;
   border-radius: 15px;
-  background: var(--journal-card);
+  background: var(--journal-tint);
 }
 
 .journal-compose-tabs button {
@@ -171,8 +173,9 @@
 }
 
 .journal-compose-tabs button[aria-selected='true'] {
-  background: var(--journal-tint);
+  background: var(--journal-card);
   color: var(--journal-accent);
+  box-shadow: 0 1px 3px rgb(22 35 66 / 8%);
 }
 
 .journal-form-new .journal-compose-panel { min-height: 78px; }
@@ -205,8 +208,7 @@
 }
 
 .journal-form-new .journal-form-actions {
-  padding-top: 10px;
-  border-top: 1px solid var(--journal-border);
+  margin-top: 10px;
 }
 
 .journal-form-new .journal-photo-action,
@@ -498,6 +500,14 @@
 .journal-entry-time {
   color: var(--journal-muted);
   font-size: 12px;
+}
+
+.journal-entry-device {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: 8px;
+  white-space: nowrap;
 }
 
 .journal-entry-location {

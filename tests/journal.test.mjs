@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { emptyData, parseBackup, validateLifeOSData } from '../src/data.ts'
 import { groupJournalEntries } from '../src/journal/timeline.ts'
+import { detectJournalDevice } from '../src/journal/device.ts'
 
 const entry = (id, text, date) => ({ id, text, createdAt: date.toISOString() })
 const photoPrefix = 'data:image/jpeg;base64,'
@@ -19,6 +20,26 @@ test('version 1 journal backups still restore entries with no photo or edit time
   const backup = emptyData()
   backup.journal.push(entry('legacy', 'An earlier entry', new Date(2026, 10, 10, 19)))
   assert.deepEqual(parseBackup(JSON.stringify(backup)).journal, backup.journal)
+})
+
+test('creation device survives backup while legacy entries stay unlabeled', () => {
+  const backup = emptyData()
+  backup.journal.push({ ...entry('new', 'From phone', new Date()), createdOn: 'iphone' })
+  backup.journal.push(entry('old', 'Before device labels', new Date()))
+  const restored = parseBackup(JSON.stringify(backup))
+  assert.equal(restored.journal[0].createdOn, 'iphone')
+  assert.equal(restored.journal[1].createdOn, undefined)
+  backup.journal[0].createdOn = 'made-up-device'
+  assert.equal(validateLifeOSData(backup), false)
+})
+
+test('device detection uses only broad browser platform signals', () => {
+  assert.equal(detectJournalDevice({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)' }), 'iphone')
+  assert.equal(detectJournalDevice({ userAgent: 'Mozilla/5.0 (Linux; Android 15)' }), 'android')
+  assert.equal(detectJournalDevice({ userAgent: 'Mozilla/5.0 (Windows NT 10.0)' }), 'windows')
+  assert.equal(detectJournalDevice({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)', platform: 'MacIntel', maxTouchPoints: 5 }), 'ipad')
+  assert.equal(detectJournalDevice({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)', platform: 'MacIntel', maxTouchPoints: 0 }), 'mac')
+  assert.equal(detectJournalDevice({ userAgent: 'Mozilla/5.0' }), 'unknown')
 })
 
 test('linked Journal notes survive backup even if the original was deleted', () => {

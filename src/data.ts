@@ -1,5 +1,6 @@
 import { isJournalPhoto } from './journal/photo.ts'
 import { validApproximateLocation, type ApproximateLocation } from './journal/location.ts'
+import { journalDevices, type JournalDevice } from './journal/device.ts'
 import type { CloudOperation } from './journal/cloud-model.ts'
 
 export type Theme = 'light' | 'dark' | 'system'
@@ -96,6 +97,7 @@ export interface JournalEntry {
   id: string
   text: string
   createdAt: string
+  createdOn?: JournalDevice
   updatedAt?: string
   photo?: string
   taskId?: string
@@ -319,6 +321,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
     }
   }
   const validJournal = (item: unknown) => isRecord(item) && isString(item.id) && isString(item.text) && isTimestamp(item.createdAt) &&
+    (item.createdOn === undefined || journalDevices.some(device => device === item.createdOn)) &&
     (item.updatedAt === undefined || isTimestamp(item.updatedAt)) && (item.photo === undefined || isJournalPhoto(item.photo)) &&
     (item.taskId === undefined || isString(item.taskId)) &&
     (item.linkedEntryId === undefined || (isString(item.linkedEntryId) && item.linkedEntryId.length > 0 && item.linkedEntryId.length <= 200 && item.linkedEntryId !== item.id)) &&

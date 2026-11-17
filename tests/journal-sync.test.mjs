@@ -127,6 +127,21 @@ test('two guest recovery codes restore only their own notes without an account',
   } finally { h.restore() }
 })
 
+test('cloud restore keeps the original creation device after edits', async () => {
+  const h = harness()
+  try {
+    const original = { ...entry('device', 'Original'), createdOn: 'iphone' }
+    const first = h.client('A', { ...emptyData(), journal: [original] })
+    await new JournalCloudSync(first).sync()
+    first.save(withJournalChanges(first.getData(), { ...first.getData(), journal: [{ ...original, text: 'Edited on another device', updatedAt: new Date().toISOString() }] }))
+    await new JournalCloudSync(first).sync()
+    const second = h.client('A')
+    await new JournalCloudSync(second).sync()
+    assert.equal(second.getData().journal[0].createdOn, 'iphone')
+    assert.equal(second.getData().journal[0].text, 'Edited on another device')
+  } finally { h.restore() }
+})
+
 test('recovery merge preserves different local and remote entries sharing an id', async () => {
   const h = harness()
   const code = 'd'.repeat(64)

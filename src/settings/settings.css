@@ -752,7 +752,7 @@
   .settings-page__quick-nav button { flex: 0 1 auto; justify-content: center; min-width: 0; padding-inline: 9px; white-space: nowrap; }
 
   .focus-break-reminder {
-    bottom: calc(72px + env(safe-area-inset-bottom));
+    bottom: calc(var(--life-mobile-nav-height, 78px) + 8px);
   }
 }
 

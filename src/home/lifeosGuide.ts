@@ -52,7 +52,7 @@ const russianAnswers: Record<string, { text: string; steps: string[] }> = {
   'focus:finish': { text: 'После завершения время фокуса сохранится.', steps: ['Нажми Finish на экране фокуса.', 'Заполни короткую оценку, если она включена.', 'Сессию можно найти в Focus history или истории задачи.'] },
   'focus:clarify-pause': { text: 'Ты имеешь в виду паузу во время фокус-сессии?', steps: [] },
   'journal:write': { text: 'В Journal можно сохранять заметки и фотографии и раскладывать их по папкам.', steps: ['Открой Journal через плитку на Home.', 'Напиши заметку в Brain dump и нажми Save.', 'Если нужна папка, выбери её до сохранения.'] },
-  'navigation:toggle': { text: 'Состав нижней панели можно настроить.', steps: ['Открой Settings, затем Navigation.', 'Включи или выключи Ask LifeOS и Journal для нижней панели.', 'Выбор сохранится автоматически.'] },
+  'navigation:toggle': { text: 'Состав нижней панели можно настроить.', steps: ['Открой Settings, затем Navigation.', 'Включи или выключи Гид и Journal для нижней панели.', 'Выбор сохранится автоматически.'] },
   'backup:export': { text: 'Резервная копия сохраняет данные LifeOS в файл.', steps: ['Открой Settings и нажми Export.', 'Сохрани скачанный файл в надёжном месте.', 'При необходимости восстанови его через Import в Settings.'] },
   'tasks:link': { text: 'Заметку Journal можно связать с одной задачей.', steps: ['Открой Tasks и нажми название задачи.', 'В истории нажми Link a note и выбери свободную заметку.', 'Или нажми Write a reflection, чтобы создать новую связанную заметку.'] },
   'tasks:history': { text: 'Можно посмотреть все фокус-сессии или только сессии одной задачи.', steps: ['Нажми Focus history на Home, чтобы увидеть общий список.', 'Для одной задачи открой Tasks и нажми её название.'] },
@@ -84,7 +84,7 @@ function answerEnglish(question: string, previous?: GuideContext): GuideAnswer {
   }
   if (/bottom|navigation|nav bar|tab|shortcut|панел|навигац|вкладк|ярлык/.test(query)) {
     return answer('You can choose which shortcuts appear in the bottom bar.', 'settings', { topic: 'navigation', step: 'toggle' },
-      ['Open Settings, then Navigation.', 'Turn Ask LifeOS or Journal on or off in the navigation bar.', 'Your choice is saved automatically.'],
+      ['Open Settings, then Navigation.', 'Turn Guide or Journal on or off in the navigation bar.', 'Your choice is saved automatically.'],
       ['How do I change the theme?', 'Where is Journal?'])
   }
   if (/backup|export|save.*copy|резерв|копи|экспорт/.test(query)) {

@@ -16,6 +16,10 @@
   }
 
   .app-shell .mobile-nav {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(var(--life-mobile-nav-columns), minmax(0, 1fr));
+    grid-auto-rows: 62px;
+    align-content: start;
     align-items: stretch;
     gap: 4px;
     height: var(--life-mobile-nav-height);
@@ -24,6 +28,10 @@
     border-top: 0;
     background: transparent;
     box-shadow: none;
+  }
+
+  .app-shell .main-area:not(:has(> .life-main-home)) {
+    padding-bottom: var(--life-mobile-nav-extra);
   }
 
   .app-shell .mobile-nav .nav-button {
@@ -68,19 +76,4 @@
     outline-offset: -2px;
   }
 
-  .app-shell .mobile-nav:has(> :nth-child(6)) {
-    grid-auto-columns: 64px;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-  }
-
-  .app-shell .mobile-nav:has(> :nth-child(6))::-webkit-scrollbar {
-    display: none;
-  }
-
-  .app-shell .mobile-nav:has(> :nth-child(6)) .nav-button {
-    scroll-snap-align: center;
-  }
 }

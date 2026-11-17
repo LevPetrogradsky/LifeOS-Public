@@ -130,7 +130,7 @@ export default function AskLifeOS({ actions, language = 'en' }: { actions: Actio
     <div className="life-main-guide-heading">
       <span className="life-main-guide-icon"><MessageCircle size={20} aria-hidden="true" /></span>
       <div>
-        <h2 id="life-main-guide-title">{language === 'ru' ? 'Спросите LifeOS' : 'Ask LifeOS'}</h2>
+        <h2 id="life-main-guide-title">{language === 'ru' ? 'Гид' : 'Guide'}</h2>
         <p>{language === 'ru' ? 'Подсказки по приложению, когда они нужны.' : 'A little help finding your way around.'}</p>
       </div>
       <button type="button" className="life-main-ai-toggle" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(open => !open)}>
@@ -138,7 +138,7 @@ export default function AskLifeOS({ actions, language = 'en' }: { actions: Actio
       </button>
     </div>
 
-    {settingsOpen && <div className="life-main-ai-settings" aria-label={language === 'ru' ? 'Настройки Ask LifeOS' : 'Ask LifeOS settings'}>
+    {settingsOpen && <div className="life-main-ai-settings" aria-label={language === 'ru' ? 'Настройки гида' : 'Guide settings'}>
       <div className="life-main-ai-settings-title"><Sparkles size={18} aria-hidden="true" /><strong>{language === 'ru' ? 'Облачные ответы' : 'Cloud answers'}</strong></div>
       <p>{language === 'ru' ? 'Локальные подсказки работают без ключа. Выберите провайдера и подключите его только по желанию.' : 'Local tips work without a key. Connect a provider only if you want cloud answers.'}</p>
       <fieldset className="life-main-ai-providers" disabled={checking || asking}>

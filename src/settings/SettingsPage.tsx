@@ -129,7 +129,7 @@ export default function SettingsPage({
 }: SettingsPageProps) {
   const t = (text: string) => translate(language, text)
   const [openSections, setOpenSections] = useState<Record<SettingsSection, boolean>>({
-    account: true, profile: true, focus: true, focusOptions: false,
+    account: false, profile: false, focus: false, focusOptions: false,
     backups: false, more: false, navigation: false, about: false, advanced: false,
   })
   const sectionIds: SettingsSection[] = [
@@ -137,11 +137,11 @@ export default function SettingsPage({
     ...(focusCheckin && !postFocusAction?.value ? ['focusOptions' as const] : []),
     'more', 'backups', 'navigation', 'about', 'advanced',
   ]
-  const anyOpen = sectionIds.some(id => openSections[id])
+  const allOpen = sectionIds.every(id => openSections[id])
   const setSection = (id: SettingsSection, open: boolean) =>
     setOpenSections(current => current[id] === open ? current : { ...current, [id]: open })
   const toggleAll = () => setOpenSections(current => ({ ...current,
-    ...Object.fromEntries(sectionIds.map(id => [id, !anyOpen])),
+    ...Object.fromEntries(sectionIds.map(id => [id, !allOpen])),
   }))
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -191,7 +191,7 @@ export default function SettingsPage({
     { title: t('More options'), section: 'more', target: 'more', keywords: 'additional settings дополнительно' },
     { title: t('Home & navigation'), section: 'navigation', target: 'navigation', keywords: 'shortcuts bar главная панель ярлыки' },
     { title: t('Home in bottom bar'), section: 'navigation', target: 'home-bar', keywords: 'navigation навигация' },
-    { title: t('Ask LifeOS in bottom bar'), section: 'navigation', target: 'ask-bar', keywords: 'navigation навигация' },
+    { title: t('Guide in bottom bar'), section: 'navigation', target: 'ask-bar', keywords: 'navigation навигация' },
     ...visibleShortcuts.map(({ id, label }) => ({ title: t(label), section: 'navigation' as const, target: `shortcut-${id}`, keywords: 'shortcut home bar ярлык главная панель' })),
     { title: t('About'), section: 'about', target: 'about', keywords: 'version приложение версия' },
     { title: t('Demo link'), section: 'about', target: 'demo-link', keywords: 'share ссылка поделиться' },
@@ -217,10 +217,10 @@ export default function SettingsPage({
           </button>
         <div className="settings-page__toggle-all-wrap">
           <button type="button" className="settings-page__toggle-all" onClick={toggleAll}>
-            {t(anyOpen ? 'Collapse All' : 'Expand All')}
+            {t(allOpen ? 'Collapse All' : 'Expand All')}
           </button>
           {interactiveTips && <InteractiveTip className="settings-page__toggle-tip"
-            label={t(anyOpen ? 'Collapse all sections' : 'Expand all sections')} />}
+            label={t(allOpen ? 'Collapse all sections' : 'Expand all sections')} />}
         </div>
         </div>
       </div>
@@ -359,8 +359,8 @@ export default function SettingsPage({
               onChange={event => onHomeVisibilityChange(event.currentTarget.checked)} />
           </label>
           <label id="settings-target-ask-bar" className="settings-page__toggle settings-page__navigation-toggle">
-            <span className="settings-page__toggle-copy"><strong>{t('Ask LifeOS in bottom bar')}</strong></span>
-            <input type="checkbox" role="switch" aria-label={t('Ask LifeOS in navigation bar')} checked={showAskLifeOS}
+            <span className="settings-page__toggle-copy"><strong>{t('Guide in bottom bar')}</strong></span>
+            <input type="checkbox" role="switch" aria-label={t('Guide in navigation bar')} checked={showAskLifeOS}
               onChange={event => onAskLifeOSVisibilityChange(event.currentTarget.checked)} />
           </label>
           {!showHome && <p className="settings-page__description">{t('Home shortcuts appear when Home is visible.')}</p>}

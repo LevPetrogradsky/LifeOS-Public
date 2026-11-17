@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type Dispatch, type SetStateAction } from 'react'
-import { ArrowLeft, BookOpen, ChevronDown, Folder, ImagePlus, Link2, MapPin, Mic, MoreHorizontal, Pencil, Search, Sparkles, Square, Trash2, X } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronDown, Folder, ImagePlus, Laptop, Link2, MapPin, Mic, Monitor, MoreHorizontal, Pencil, Search, Smartphone, Sparkles, Square, Tablet, Trash2, X } from 'lucide-react'
 import type { JournalEntry, JournalFolder, JournalFolderAppearance } from '../data'
 import JournalFolders from './JournalFolders'
 import EntryFolderDrag from './EntryFolderDrag'
@@ -10,6 +10,7 @@ import UnifiedSearch from '../search/UnifiedSearch'
 import { prepareJournalPhoto } from './photo'
 import { clearJournalDraft, readJournalDraft, readOpenJournalEditor, writeJournalDraft, writeOpenJournalEditor } from './drafts'
 import { locationLabel, requestApproximateLocation, type ApproximateLocation } from './location'
+import { journalDeviceLabel } from './device'
 import { groupJournalEntries, journalDate, journalTime } from './timeline'
 import { dictationLanguages, useJournalDictation } from './useJournalDictation'
 import { translate, type AppLanguage } from '../language'
@@ -381,7 +382,7 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
   useLayoutEffect(() => {
     if (action !== 'edit') return
     editDialog.current?.showModal()
-    editDialog.current?.querySelector('textarea')?.focus()
+    editDialog.current?.querySelector<HTMLButtonElement>('header button')?.focus({ preventScroll: true })
   }, [action])
 
   useEffect(() => {
@@ -436,6 +437,13 @@ function JournalCard({ entry, entries, folders, onEdit, onDelete, onMove, onOpen
           {entry.text && <p>{entry.text}</p>}
           <div className="journal-entry-time">
             <time dateTime={entry.createdAt}>{journalDate(entry.createdAt, language)} · {journalTime(entry.createdAt, language, timeFormat)}</time>
+            {entry.createdOn && <span className="journal-entry-device" title={language === 'ru' ? 'Устройство создания' : 'Created on'}>
+              {entry.createdOn === 'ipad' ? <Tablet size={12} aria-hidden="true" />
+                : entry.createdOn === 'windows' || entry.createdOn === 'unknown' ? <Monitor size={12} aria-hidden="true" />
+                  : entry.createdOn === 'mac' ? <Laptop size={12} aria-hidden="true" />
+                    : <Smartphone size={12} aria-hidden="true" />}
+              {journalDeviceLabel(entry.createdOn, language)}
+            </span>}
             {entry.updatedAt && <span title={journalDate(entry.updatedAt, language)}>{t('Edited')}</span>}
             {entry.location && <span className="journal-entry-location"><MapPin size={12} aria-hidden="true" />{locationLabel(entry.location, language)}</span>}
             {folder && <span className="journal-entry-folder"><FolderGlyph {...folder} size={12} />{folder.name}</span>}
