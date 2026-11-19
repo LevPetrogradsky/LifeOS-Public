@@ -1,15 +1,15 @@
-import { loadData, validateLifeOSData, type JournalEntry, type JournalFolder, type LifeOSData } from '../data.ts'
+import { loadData, validateLiveOSData, type JournalEntry, type JournalFolder, type LiveOSData } from '../data.ts'
 import { validCloudItem, validCloudOperation, type CloudItem, type CloudOperation } from './cloud-model.ts'
 
-type Meta = NonNullable<LifeOSData['journalCloud']>
+type Meta = NonNullable<LiveOSData['journalCloud']>
 type Client = {
-  getData: () => LifeOSData
-  save: (data: LifeOSData) => boolean
+  getData: () => LiveOSData
+  save: (data: LiveOSData) => boolean
   token: () => Promise<string | null>
   status: (text: string) => void
 }
 
-function meta(data: LifeOSData): Meta {
+function meta(data: LiveOSData): Meta {
   const value = data.journalCloud
   if (value === undefined) return { version: 1, migrated: false, pending: [] }
   if (value.version !== 1 || typeof value.migrated !== 'boolean' ||
@@ -34,7 +34,7 @@ function changes<T extends JournalFolder | JournalEntry>(kind: 'folder' | 'entry
   return operations
 }
 
-export function withJournalChanges(before: LifeOSData, after: LifeOSData): LifeOSData {
+export function withJournalChanges(before: LiveOSData, after: LiveOSData): LiveOSData {
   const ordered = { ...after, journalFolders: (after.journalFolders ?? []).map((folder, order) => ({ ...folder, order })) }
   const pending = [
     ...changes('folder', before.journalFolders ?? [], ordered.journalFolders),
@@ -49,14 +49,14 @@ export function withJournalChanges(before: LifeOSData, after: LifeOSData): LifeO
 const priority = (item: CloudItem) =>
   item.kind === 'folder' ? (item.deleted ? 3 : 0) : (item.deleted ? 2 : 1)
 
-function importOperations(data: LifeOSData): CloudOperation[] {
+function importOperations(data: LiveOSData): CloudOperation[] {
   return [
     ...(data.journalFolders ?? []).map((folder, order) => ({ mode: 'import', kind: 'folder', id: folder.id, deleted: false, payload: { ...folder, order } })),
     ...data.journal.map(payload => ({ mode: 'import', kind: 'entry', id: payload.id, deleted: false, payload })),
   ] as CloudOperation[]
 }
 
-export function preserveInitialJournal(data: LifeOSData, remote: CloudItem[]): LifeOSData {
+export function preserveInitialJournal(data: LiveOSData, remote: CloudItem[]): LiveOSData {
   const existing = new Map(remote.map(item => [`${item.kind}:${item.id}`, item]))
   const remoteNames = new Set(remote.filter(item => item.kind === 'folder' && !item.deleted && item.payload)
     .map(item => (item.payload as JournalFolder).name.toLocaleLowerCase()))
@@ -89,11 +89,11 @@ export function preserveInitialJournal(data: LifeOSData, remote: CloudItem[]): L
     ...(entry.linkedEntryId && entryIds.has(entry.linkedEntryId) ? { linkedEntryId: entryIds.get(entry.linkedEntryId) } : {}),
   }))
   const result = { ...data, journalFolders: folders, journal }
-  if (!validateLifeOSData(result)) throw new Error('Local Journal could not be merged safely. Your notes were kept.')
+  if (!validateLiveOSData(result)) throw new Error('Local Journal could not be merged safely. Your notes were kept.')
   return result
 }
 
-function applyItems(data: LifeOSData, items: CloudItem[]): LifeOSData {
+function applyItems(data: LiveOSData, items: CloudItem[]): LiveOSData {
   const byKey = new Map(items.map(item => [`${item.kind}:${item.id}`, item]))
   for (const item of meta(data).pending) byKey.set(`${item.kind}:${item.id}`, item)
   const folders = [...byKey.values()].filter((item): item is CloudItem & { kind: 'folder'; payload: JournalFolder } =>
@@ -106,7 +106,7 @@ function applyItems(data: LifeOSData, items: CloudItem[]): LifeOSData {
     journalFolders: folders,
     journal: entries.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
   }
-  if (!validateLifeOSData(next)) throw new Error('Cloud Journal response is incomplete. Your local Journal was kept.')
+  if (!validateLiveOSData(next)) throw new Error('Cloud Journal response is incomplete. Your local Journal was kept.')
   return next
 }
 
@@ -250,7 +250,7 @@ export class JournalCloudSync {
   }
 }
 
-export function guestJournalCount(account?: LifeOSData) {
+export function guestJournalCount(account?: LiveOSData) {
   const guest = loadData()
   const existing = new Set(account?.journal.map(entry => entry.id))
   return guest.error ? 0 : guest.data.journal.filter(entry => !existing.has(entry.id)).length

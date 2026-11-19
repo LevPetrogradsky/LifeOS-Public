@@ -65,14 +65,16 @@
   line-height: 1.06;
   font-weight: 750;
   overflow-wrap: anywhere;
+  color: var(--main-blue-text);
 }
-.life-main-thanks { display: flex; align-items: center; gap: 5px; margin: 7px 0 0; color: var(--main-muted); font-size: 13px; }
-.life-main-thanks svg { color: #df3954; }
+.life-main-celebration { display: flex; align-items: flex-start; gap: 14px; }
+.life-main-celebration > svg { flex: none; margin-top: 2px; color: #e3a833; }
 .life-main-discord,
 .life-main-github,
 .life-main-support {
   display: flex;
   width: fit-content;
+  max-width: 100%;
   align-items: center;
   justify-content: center;
   gap: 7px;
@@ -83,51 +85,33 @@
   font-weight: 700;
   line-height: 1.2;
   text-decoration: none;
-  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  border: 1px solid var(--main-line);
+  background: transparent;
+  color: var(--main-muted);
 }
-.life-main-discord {
-  margin-top: 12px;
-  border: 1px solid #4b72e8;
-  background: #5865f2;
-  box-shadow: 0 5px 13px rgb(47 64 177 / 28%);
-  color: #fff;
+.life-main-today-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
 }
-.life-main-discord:hover { background: #4855d7; box-shadow: 0 7px 17px rgb(47 64 177 / 33%); transform: translateY(-1px); }
+.life-main-today-area .life-main-today-links { margin-top: 0; }
+.life-main-today-links > a { margin-top: 0; }
 .life-main-discord:focus-visible,
 .life-main-github:focus-visible,
 .life-main-support:focus-visible { outline: 3px solid #a9cbff; outline-offset: 3px; }
-:root[data-theme='dark'] .life-main-discord { border-color: #8790ff; background: #6975ff; box-shadow: 0 5px 17px rgb(105 117 255 / 28%); color: #101326; }
-:root[data-theme='dark'] .life-main-discord:hover { background: #828cff; box-shadow: 0 7px 20px rgb(105 117 255 / 36%); }
-
-.life-main-github {
-  margin-top: 8px;
-  border: 1px solid #b5c7e4;
-  background: #f8fbff;
-  box-shadow: 0 4px 11px rgb(42 76 130 / 12%);
-  color: #245595;
-}
-.life-main-github:hover { border-color: #8baee1; background: #ebf3ff; box-shadow: 0 6px 15px rgb(42 76 130 / 18%); transform: translateY(-1px); }
-:root[data-theme='dark'] .life-main-github { border-color: #627394; background: #2f3b53; box-shadow: 0 4px 13px rgb(0 0 0 / 22%); color: #e6edff; }
-:root[data-theme='dark'] .life-main-github:hover { border-color: #8ba7d4; background: #394967; box-shadow: 0 6px 16px rgb(0 0 0 / 29%); }
-
-.life-main-support {
-  margin-top: 8px;
-  border: 1px solid var(--main-line);
-  background: var(--main-surface);
-  color: var(--main-muted);
-}
+.life-main-today-links svg { transition: color 180ms ease, fill 180ms ease; }
+.life-main-discord:hover svg, .life-main-discord:focus-visible svg { color: #5865f2; }
+.life-main-github:hover svg, .life-main-github:focus-visible svg { color: #24292f; }
+:root[data-theme='dark'] .life-main-github:hover svg,
+:root[data-theme='dark'] .life-main-github:focus-visible svg { color: #f0f3f7; }
 .life-main-support svg {
   fill: transparent;
   stroke: currentColor;
-  transition: fill 180ms ease, stroke 180ms ease;
 }
-.life-main-support:focus-visible svg { fill: #e54862; stroke: #e54862; }
-@media (hover: hover) and (pointer: fine) {
-  .life-main-support:hover { border-color: var(--main-blue-text); color: var(--main-blue-text); }
-  .life-main-support:hover svg { fill: #e54862; stroke: #e54862; }
-}
+.life-main-support:hover svg, .life-main-support:focus-visible svg { fill: #e54862; stroke: #e54862; color: #e54862; }
 @media (prefers-reduced-motion: reduce) {
-  .life-main-support svg { transition: none; }
+  .life-main-today-links svg { transition: none; }
 }
 
 .life-main-icon {
@@ -166,61 +150,10 @@
   box-shadow: var(--main-shadow);
 }
 
-.life-main-today-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.life-main-today-heading h2 {
-  margin: 0;
+.life-main-today-area h2 {
+  margin: 0 0 10px;
   font-size: 22px;
   line-height: 1.2;
-}
-
-.life-main-today-heading span {
-  color: var(--main-muted);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.life-main-today progress {
-  display: block;
-  width: 100%;
-  height: 5px;
-  appearance: none;
-  border: none;
-  border-radius: 99px;
-  overflow: hidden;
-  background: var(--main-soft);
-  color: var(--main-blue);
-}
-
-.life-main-today progress::-webkit-progress-bar {
-  background: var(--main-soft);
-}
-
-.life-main-today progress::-webkit-progress-value {
-  background: var(--main-blue);
-}
-
-.life-main-today progress::-moz-progress-bar {
-  background: var(--main-blue);
-}
-
-.life-main-next {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 64px;
-  padding: 9px 0;
-}
-
-.life-main-next > div {
-  flex: 1;
-  min-width: 0;
 }
 
 .life-main-task-title strong {
@@ -228,22 +161,10 @@
   overflow-wrap: anywhere;
 }
 
-.life-main-next p,
 .life-main-task-title small {
   margin: 3px 0 0;
   color: var(--main-muted);
   font-size: 13px;
-}
-
-.life-main-today-empty {
-  margin: 0;
-  color: var(--main-muted);
-  font-size: 14px;
-}
-
-.life-main-today-empty-state {
-  display: grid;
-  gap: 12px;
 }
 
 .life-main-complete {
@@ -300,31 +221,38 @@
 .life-main-add-task:hover { border-color: var(--main-blue-text); }
 .life-main-shortcut-icon.add { background: var(--main-soft); color: var(--main-blue-text); }
 
-.life-main-add-task-inline {
-  min-height: 48px;
-  padding: 7px 10px;
-  border-radius: 12px;
-  background: var(--main-soft);
-  color: var(--main-blue-text);
+.life-main-services {
+  display: grid;
+  gap: 12px;
 }
 
-.life-main-add-task-inline .life-main-shortcut-icon.add {
-  width: 32px;
-  height: 32px;
-  background: var(--main-surface);
+.life-main-services h2 {
+  margin: 0;
+  color: var(--main-ink);
+  font-size: 19px;
+  line-height: 1.25;
 }
 
 .life-main-shortcuts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--main-line);
+  border-radius: 23px;
+  background: var(--main-surface);
 }
 
-.life-main-history-link {
-  justify-self: start;
+.life-main-hub-name {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: var(--main-blue-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .12em;
 }
 
-.life-main-shortcuts button {
+.life-main-shortcuts > :is(button, a, .life-main-service-soon) {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -332,15 +260,33 @@
   min-height: 74px;
   padding: 12px;
   border: 1px solid var(--main-line);
-  border-radius: 19px;
+  border-radius: 15px;
   color: var(--main-ink);
-  background: var(--main-surface);
+  background: var(--main-soft);
   text-align: left;
+  text-decoration: none;
+  font: inherit;
 }
 
-.life-main-shortcuts button:hover {
+.life-main-shortcuts > :is(button, a) { cursor: pointer; }
+
+.life-main-shortcuts > :is(button, a):is(:hover, :focus-visible) {
   border-color: var(--main-blue-text);
 }
+
+.life-main-shortcuts > .life-main-service-soon {
+  border-style: dashed;
+  color: var(--main-muted);
+}
+
+.life-main-service-copy { display: grid; gap: 2px; min-width: 0; }
+.life-main-service-copy small { color: var(--main-muted); font-size: 11px; }
+
+.life-main-shortcuts a {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.life-main-shortcuts a strong { min-width: 0; }
 
 .life-main-shortcut-icon {
   width: 40px;
@@ -363,6 +309,26 @@
 .life-main-shortcut-icon.focus {
   background: #e1edff;
   color: #254f9c;
+}
+
+.life-main-shortcut-icon.gym {
+  background: #e7e8ff;
+  color: #5142a5;
+}
+
+.life-main-shortcut-icon.storage {
+  background: #e8e4f8;
+  color: #59449b;
+}
+
+.life-main-shortcut-icon.ai {
+  background: #f3e7fb;
+  color: #7843a0;
+}
+
+.life-main-shortcut-icon.future {
+  background: var(--main-soft);
+  color: var(--main-muted);
 }
 
 
@@ -879,6 +845,11 @@
 }
 
 @media (max-width: 760px) {
+  .life-main-today-links {
+    display: grid;
+    justify-items: start;
+  }
+
   .main-area:has(> .life-main) > .mobile-header {
     display: none;
   }
@@ -921,10 +892,13 @@
     width: calc(100% - 32px);
   }
 
-  .life-main-shortcuts button {
+  .life-main-shortcuts > :is(button, a, .life-main-service-soon) {
     padding: 10px 8px;
     gap: 7px;
   }
+
+  .life-main-shortcuts .life-main-shortcut-icon { width: 34px; height: 34px; }
+  .life-main-shortcuts strong { font-size: 13px; }
 }
 
 .life-main-break {

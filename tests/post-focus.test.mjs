@@ -1,14 +1,19 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { emptyData, loadData, parseBackup, recordUnratedSession, shortcutVisible, timerView, validateLifeOSData } from '../src/data.ts'
+import { emptyData, loadData, parseBackup, recordUnratedSession, shortcutVisible, timerView, validateLiveOSData } from '../src/data.ts'
 
-test('new navigation defaults preserve explicit shortcut choices', () => {
+test('new profiles show OS, Guide, Settings while old shortcut choices survive', () => {
   const fresh = emptyData()
-  assert.equal(shortcutVisible(fresh, 'journal', 'bar'), true)
-  assert.equal(shortcutVisible(fresh, 'tasks', 'bar'), true)
+  assert.equal(fresh.askLiveOSInBar, true)
+  assert.equal(shortcutVisible(fresh, 'journal', 'bar'), false)
+  assert.equal(shortcutVisible(fresh, 'tasks', 'bar'), false)
   assert.equal(shortcutVisible(fresh, 'focus', 'bar'), false)
-  const existing = { ...fresh, shortcutPreferences: { journal: { bar: false }, focus: { bar: true } } }
+  const legacy = { ...fresh, askLiveOSInBar: undefined, shortcutPreferences: undefined }
+  assert.equal(shortcutVisible(legacy, 'journal', 'bar'), true)
+  assert.equal(shortcutVisible(legacy, 'tasks', 'bar'), true)
+  const existing = { ...legacy, shortcutPreferences: { journal: { bar: false }, focus: { bar: true } } }
   assert.equal(shortcutVisible(existing, 'journal', 'bar'), false)
+  assert.equal(shortcutVisible(existing, 'tasks', 'bar'), true)
   assert.equal(shortcutVisible(existing, 'focus', 'bar'), true)
 })
 
@@ -52,9 +57,9 @@ test('skipping post-focus clears the choice and keeps one saved session after re
   }
 })
 
-test('older LifeOS backups remain valid without post-focus or preset choices', () => {
+test('older LiveOS Portable backups remain valid without post-focus or preset choices', () => {
   const legacy = emptyData()
-  assert.equal(validateLifeOSData(legacy), true)
+  assert.equal(validateLiveOSData(legacy), true)
   assert.equal(parseBackup(JSON.stringify(legacy)).postFocusAction, undefined)
   assert.equal(parseBackup(JSON.stringify(legacy)).timerDefaultView, undefined)
   assert.equal(timerView(parseBackup(JSON.stringify(legacy))), 'compact')
@@ -63,18 +68,18 @@ test('older LifeOS backups remain valid without post-focus or preset choices', (
 test('compact timer preference survives reload and rejects unknown views', () => {
   assert.equal(timerView(emptyData()), 'compact')
   const compact = { ...emptyData(), timerDefaultView: 'compact' }
-  assert.equal(validateLifeOSData(compact), true)
+  assert.equal(validateLiveOSData(compact), true)
   assert.equal(parseBackup(JSON.stringify(compact)).timerDefaultView, 'compact')
   assert.equal(timerView(parseBackup(JSON.stringify({ ...compact, timerDefaultView: 'full' }))), 'full')
-  assert.equal(validateLifeOSData({ ...compact, timerDefaultView: 'floating' }), false)
+  assert.equal(validateLiveOSData({ ...compact, timerDefaultView: 'floating' }), false)
 })
 
 test('explicit post-focus and preset choices survive a backup round trip', () => {
   const data = { ...emptyData(), postFocusAction: 'reflection', focusPresetId: 'bible-reading' }
-  assert.equal(validateLifeOSData(data), true)
+  assert.equal(validateLiveOSData(data), true)
   assert.deepEqual(parseBackup(JSON.stringify(data)), data)
-  assert.equal(validateLifeOSData({ ...data, postFocusAction: 'unexpected' }), false)
-  assert.equal(validateLifeOSData({ ...data, focusPresetId: 'unexpected' }), false)
+  assert.equal(validateLiveOSData({ ...data, postFocusAction: 'unexpected' }), false)
+  assert.equal(validateLiveOSData({ ...data, focusPresetId: 'unexpected' }), false)
 })
 
 test('a first pending session survives reload when legacy check-ins are off', () => {

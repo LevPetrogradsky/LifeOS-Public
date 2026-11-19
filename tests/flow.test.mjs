@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { emptyData, validateLifeOSData } from '../src/data.ts'
+import { emptyData, validateLiveOSData } from '../src/data.ts'
 import { canDistillPrinciple, factorObservations, hypothesisSuggestion, principleDraft, recentSessions, summarizeSessions, updateFlowEngine } from '../src/flow/model.ts'
 
 const session = (id, interest, progress, factors = ['Personal Control']) => ({
@@ -11,7 +11,7 @@ const session = (id, interest, progress, factors = ['Personal Control']) => ({
 test('old version 1 data without Flow Engine remains valid without migration', () => {
   const legacy = emptyData()
   assert.equal(Object.hasOwn(legacy, 'flowEngine'), false)
-  assert.equal(validateLifeOSData(legacy), true)
+  assert.equal(validateLiveOSData(legacy), true)
 })
 
 test('adding Flow Engine data preserves existing version 1 focus sessions unchanged', () => {
@@ -23,7 +23,7 @@ test('adding Flow Engine data preserves existing version 1 focus sessions unchan
   }))
   assert.deepEqual(updated.sessions, legacy.sessions)
   assert.deepEqual(updated.flowEngine?.discoveries[0].enjoyableWork, 'Solving')
-  assert.equal(validateLifeOSData(updated), true)
+  assert.equal(validateLiveOSData(updated), true)
 })
 
 test('Flow Engine state validates links to existing discoveries, hypotheses, experiments and sessions', () => {
@@ -35,9 +35,9 @@ test('Flow Engine state validates links to existing discoveries, hypotheses, exp
     experiments: [{ id: 'e1', createdAt: '2026-10-21T10:00:00.000Z', hypothesisId: 'h1', condition: 'choose the first step', sessionIds: ['s1', 's2'], status: 'completed' }],
     principles: [{ id: 'p1', createdAt: '2026-10-21T10:00:00.000Z', updatedAt: '2026-10-21T10:00:00.000Z', hypothesisId: 'h1', experimentId: 'e1', text: 'Choice may help me begin.', evidenceSessionIds: ['s1', 's2'], status: 'active' }],
   }
-  assert.equal(validateLifeOSData(data), true)
+  assert.equal(validateLiveOSData(data), true)
   data.flowEngine.experiments[0].sessionIds = ['missing-session']
-  assert.equal(validateLifeOSData(data), false)
+  assert.equal(validateLiveOSData(data), false)
 })
 
 test('Flow observations summarize existing check-ins without claiming causation', () => {

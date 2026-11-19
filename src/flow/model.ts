@@ -1,4 +1,4 @@
-import { emptyFlowEngineData, type Factor, type FocusSession, type FlowEngineData, type FlowExperiment, type FlowHypothesis, type FlowPrinciple, type LifeOSData } from '../data.ts'
+import { emptyFlowEngineData, type Factor, type FocusSession, type FlowEngineData, type FlowExperiment, type FlowHypothesis, type FlowPrinciple, type LiveOSData } from '../data.ts'
 
 export interface FactorObservation {
   factor: Factor
@@ -15,9 +15,9 @@ export interface SessionSummary {
 }
 
 export function updateFlowEngine(
-  current: LifeOSData,
+  current: LiveOSData,
   change: (flow: FlowEngineData) => FlowEngineData,
-): LifeOSData {
+): LiveOSData {
   return { ...current, flowEngine: change(current.flowEngine ?? emptyFlowEngineData()) }
 }
 

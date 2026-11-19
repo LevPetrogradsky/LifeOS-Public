@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { emptyData, parseBackup, validateLifeOSData } from '../src/data.ts'
+import { emptyData, parseBackup, validateLiveOSData } from '../src/data.ts'
 import { groupJournalEntries } from '../src/journal/timeline.ts'
 import { detectJournalDevice } from '../src/journal/device.ts'
 
@@ -30,7 +30,7 @@ test('creation device survives backup while legacy entries stay unlabeled', () =
   assert.equal(restored.journal[0].createdOn, 'iphone')
   assert.equal(restored.journal[1].createdOn, undefined)
   backup.journal[0].createdOn = 'made-up-device'
-  assert.equal(validateLifeOSData(backup), false)
+  assert.equal(validateLiveOSData(backup), false)
 })
 
 test('device detection uses only broad browser platform signals', () => {
@@ -47,7 +47,7 @@ test('linked Journal notes survive backup even if the original was deleted', () 
   backup.journal.push({ ...entry('linked', 'A related thought', new Date(2026, 10, 17, 12)), linkedEntryId: 'deleted-original' })
   assert.deepEqual(parseBackup(JSON.stringify(backup)).journal, backup.journal)
   backup.journal[0].linkedEntryId = 'linked'
-  assert.equal(validateLifeOSData(backup), false)
+  assert.equal(validateLiveOSData(backup), false)
 })
 
 test('journal backups reject external, malformed, and oversized photo data', () => {
@@ -62,11 +62,11 @@ test('journal backups reject external, malformed, and oversized photo data', () 
     jpegHeaders(961),
   ]) {
     backup.journal = [{ ...saved, photo }]
-    assert.equal(validateLifeOSData(backup), false, photo.slice(0, 70))
+    assert.equal(validateLiveOSData(backup), false, photo.slice(0, 70))
   }
 
   backup.journal = [{ ...saved, updatedAt: 'not a timestamp' }]
-  assert.equal(validateLifeOSData(backup), false)
+  assert.equal(validateLiveOSData(backup), false)
 })
 
 test('timeline groups by local calendar day, sorts newest first and searches text or dates', () => {
@@ -98,8 +98,8 @@ test('journal backups preserve folders and reject invalid folder references', ()
   const styledFolder = { ...backup.journalFolders[0], color: 'purple', icon: 'book' }
   const styledBackup = { ...backup, journalFolders: [styledFolder] }
   assert.deepEqual(parseBackup(JSON.stringify(styledBackup)), styledBackup)
-  assert.equal(validateLifeOSData({ ...backup, journalFolders: [{ ...styledFolder, color: '#fff' }] }), false)
-  assert.equal(validateLifeOSData({ ...backup, journalFolders: [{ ...styledFolder, icon: 'unknown' }] }), false)
-  assert.equal(validateLifeOSData({ ...backup, journalFolders: [] }), false)
-  assert.equal(validateLifeOSData({ ...backup, journalFolders: [...backup.journalFolders, { id: 'other', name: 'work' }] }), false)
+  assert.equal(validateLiveOSData({ ...backup, journalFolders: [{ ...styledFolder, color: '#fff' }] }), false)
+  assert.equal(validateLiveOSData({ ...backup, journalFolders: [{ ...styledFolder, icon: 'unknown' }] }), false)
+  assert.equal(validateLiveOSData({ ...backup, journalFolders: [] }), false)
+  assert.equal(validateLiveOSData({ ...backup, journalFolders: [...backup.journalFolders, { id: 'other', name: 'work' }] }), false)
 })

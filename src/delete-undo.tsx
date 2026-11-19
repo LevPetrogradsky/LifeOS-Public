@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react'
-import type { JournalEntry, LifeOSData, Task } from './data'
+import type { JournalEntry, LiveOSData, Task } from './data'
 import { todayTaskLimit } from './task-rules'
 import './delete-undo.css'
 
@@ -24,8 +24,8 @@ function restoreAtPosition<T extends { id: string }>(items: T[], item: T, positi
 }
 
 export function useDeleteUndo(
-  dataRef: RefObject<LifeOSData>,
-  update: (change: (current: LifeOSData) => LifeOSData) => boolean,
+  dataRef: RefObject<LiveOSData>,
+  update: (change: (current: LiveOSData) => LiveOSData) => boolean,
 ) {
   const [deleted, setDeleted] = useState<DeletedItem[]>([])
   const [feedback, setFeedback] = useState('')

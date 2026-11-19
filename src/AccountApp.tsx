@@ -3,8 +3,9 @@ import { accountAuth, type AccountAuth } from './accounts'
 import AccountPanel from './settings/AccountPanel'
 import { STORAGE_KEY } from './data'
 import { readRecoveryCode } from './journal/guest-recovery'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { translate } from './language'
+import { readAccountOnboardingPreference, writeAccountOnboardingPreference } from './onboarding/preference'
 
 function ResetPassword({ auth, token, onDone }: { auth: AccountAuth; token: string; onDone: () => void }) {
   const [password, setPassword] = useState('')
@@ -43,24 +44,50 @@ function ResetPassword({ auth, token, onDone }: { auth: AccountAuth; token: stri
       <button type="submit" className="settings-page__action" disabled={busy}>Save new password</button>
     </form>}
     {(message || !token) && <p role="status">{message || 'This reset link is invalid or has expired.'}</p>}
-    <button type="button" className="settings-page__action" disabled={busy} onClick={onDone}>Back to LifeOS</button>
+    <button type="button" className="settings-page__action" disabled={busy} onClick={onDone}>Back to LifePortable</button>
   </main>
 }
 
 function ConnectedApp({ auth }: { auth: AccountAuth }) {
   const { data, isPending, error, refetch } = auth.useSession()
+  const [continueAsGuest, setContinueAsGuest] = useState(false)
+  const user = data?.user
+  const [onboardingPreference, setOnboardingPreference] = useState<boolean | null | undefined>()
+  const getToken = async () => {
+    const token = (await auth.getSession({ fetchOptions: { headers: { 'X-Force-Fetch': 'true' } } })).data?.session?.token
+    return token?.split('.').length === 3 ? token : null
+  }
+  useEffect(() => {
+    if (!user) { setOnboardingPreference(null); return }
+    let current = true
+    setOnboardingPreference(undefined)
+    void readAccountOnboardingPreference(getToken).then(value => { if (current) setOnboardingPreference(value) })
+    return () => { current = false }
+  }, [user?.id])
   const guestToken = import.meta.env.VITE_JOURNAL_SYNC_ENABLED === 'true'
     ? async () => { const code = readRecoveryCode(); return code ? `Guest ${code}` : null }
     : undefined
-  if (isPending) return <main className="settings-page"><p role="status">Opening LifeOS...</p></main>
+  if (isPending && !continueAsGuest) return <main className="settings-page"><p role="status">Opening LifePortable...</p>
+    <button type="button" className="settings-page__action" onClick={() => setContinueAsGuest(true)}>Continue as guest</button>
+  </main>
+  if (isPending) return <App guestCloud journalCloudToken={guestToken} account={language => <div className="settings-page__account">
+    <p className="settings-page__description">{translate(language, 'Account is still connecting. Guest access is available now.')}</p>
+    <button type="button" className="settings-page__action" onClick={() => { setContinueAsGuest(false); void refetch() }}>{translate(language, 'Try again')}</button>
+  </div>} />
   if (error) return <App journalCloudToken={guestToken} guestCloud account={language => <div className="settings-page__account">
-    <p className="settings-page__description" role="alert">{translate(language, 'Could not connect to your account. You can use LifeOS as a guest.')}</p>
+    <p className="settings-page__description" role="alert">{translate(language, 'Could not connect to your account. You can use LifePortable as a guest.')}</p>
     <button type="button" className="settings-page__action" onClick={() => void refetch()}>{translate(language, 'Try again')}</button>
   </div>} existingAccount />
 
-  const user = data?.user
+  if (user && onboardingPreference === undefined) return <main className="settings-page"><p role="status">Opening LifePortable...</p></main>
   const storageKey = user ? `${STORAGE_KEY}.neon.${user.id}` : undefined
   return <App key={storageKey ?? STORAGE_KEY} storageKey={storageKey} existingAccount={Boolean(user)}
+    accountOnboardingPreference={user ? onboardingPreference : undefined}
+    onAccountOnboardingChange={user && onboardingPreference !== null ? async disabled => {
+      const saved = await writeAccountOnboardingPreference(getToken, disabled)
+      if (saved) setOnboardingPreference(disabled)
+      return saved
+    } : undefined}
     guestCloud={!user}
     journalCloudToken={user && import.meta.env.VITE_JOURNAL_SYNC_ENABLED === 'true'
       ? async () => {

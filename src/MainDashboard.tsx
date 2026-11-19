@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Circle, ClipboardList, Flag, Github, GripHorizontal, Heart, History, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, X } from 'lucide-react'
-import { taskLists, type LifeOSData, type Task, type TaskList } from './data'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { ArrowLeft, ArrowRight, BookOpen, BookText, CalendarDays, Check, ChevronRight, Circle, ClipboardList, Code2, Dumbbell, Flag, Gamepad2, Github, GripHorizontal, HardDrive, Heart, Leaf, ListTodo, Maximize2, Pause, Pencil, Play, Plus, Search, Settings2, ShieldCheck, Sparkles, Trash2, X } from 'lucide-react'
+import { taskLists, type LiveOSData, type Task, type TaskList } from './data'
 import { todayTaskLimit } from './task-rules'
 import { translate } from './language'
 import { JournalSheet } from './journal/JournalSheet'
@@ -8,7 +8,9 @@ import './main-dashboard.css'
 import './home-tips.css'
 
 interface MainDashboardProps {
+  hubOnly?: boolean
   initialScreen?: 'home' | 'tasks'
+  hideBack?: boolean
   onReturnHome?: () => void
   returnLabel: string
   showTasksShortcut: boolean
@@ -27,14 +29,11 @@ interface MainDashboardProps {
   onReturnToFocus: () => void
   onFinishPaused: () => void
   onCancelFocus: () => void
-  onUpdate: (change: (current: LifeOSData) => LifeOSData) => boolean
+  onUpdate: (change: (current: LiveOSData) => LiveOSData) => boolean
   onOpenTask: (taskId: string) => void
   onDeleteTask: (id: string) => boolean
   onStart: (task: Task) => void
-  onStartOpenFocus: () => void
   onJournal?: () => void
-  onPresets: () => void
-  onFocusHistory: () => void
   onSettings: () => void
   onSearch: () => void
 }
@@ -44,12 +43,13 @@ const taskList = (task: Task): TaskList => task.list ?? 'today'
 
 type TaskEditor = { id: string | null; title: string; list: TaskList }
 
-function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause, onContinue, onReturn, onFinish, onCancel }: {
+function BreakCard({ taskTitle, activeTime, showTime, running, language, links, onPause, onContinue, onReturn, onFinish, onCancel }: {
   taskTitle: string
   activeTime: string
   showTime: boolean
   running: boolean
   language: 'en' | 'ru'
+  links: ReactNode
   onPause: () => void
   onContinue: () => void
   onReturn: () => void
@@ -83,10 +83,11 @@ function BreakCard({ taskTitle, activeTime, showTime, running, language, onPause
       <button type="button" onClick={() => setConfirmCancel(false)}>{language === 'ru' ? 'Назад' : 'Keep session'}</button>
       <button type="button" onClick={onCancel}>{language === 'ru' ? 'Отменить сессию' : 'Cancel session'}</button>
     </div>}
+    {links}
   </section>
 }
 
-export default function MainDashboard({ initialScreen = 'home', onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, displayName, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onStartOpenFocus, onJournal, onPresets, onFocusHistory, onSettings, onSearch }: MainDashboardProps) {
+export default function MainDashboard({ hubOnly = false, initialScreen = 'home', hideBack = false, onReturnHome, returnLabel, showTasksShortcut, showFocusShortcut, searchIncludesJournal, repoUrl, tasks, focusTaskTitle, focusRunning = false, pausedActiveTime, showPausedTime = true, displayName, language = 'en', onPauseFocus, onContinueFocus, onReturnToFocus, onFinishPaused, onCancelFocus, onUpdate, onOpenTask, onDeleteTask, onStart, onJournal, onSettings, onSearch }: MainDashboardProps) {
   const t = (text: string) => translate(language, text)
   const [screen, setScreen] = useState(initialScreen)
   const [filter, setFilter] = useState<TaskList | 'completed'>('today')
@@ -118,9 +119,7 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
   const completed = tasks.filter(task => task.completedAt !== null)
     .sort((a, b) => Date.parse(b.completedAt!) - Date.parse(a.completedAt!))
   const doneToday = completed.filter(task => taskList(task) === 'today' && new Date(task.completedAt!).toDateString() === today)
-  const nextTask = activeToday[0]
   const todayIsFull = activeToday.length >= todayTaskLimit
-  const totalToday = activeToday.length + doneToday.length
   const editorTask = editor?.id ? tasks.find(task => task.id === editor.id) : undefined
   const cannotAddToToday = todayIsFull && !(editorTask && (editorTask.completedAt || taskList(editorTask) === 'today'))
   const visibleActive = filter === 'completed' ? [] : active.filter(task => taskList(task) === filter)
@@ -220,32 +219,36 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     if (onDeleteTask(id)) setDeleting(null)
   }
 
-  const breakCard = focusTaskTitle !== undefined && <BreakCard taskTitle={focusTaskTitle} activeTime={pausedActiveTime ?? '00:00:00'} showTime={showPausedTime} running={focusRunning} language={language}
+  const hubLinks = <nav className="life-main-today-links" aria-label={language === 'ru' ? 'Ссылки сообщества' : 'Community links'}>
+    <a className="life-main-discord" href="https://discord.gg/y4s67MzZr" target="_blank" rel="noopener noreferrer">
+      <Gamepad2 size={15} aria-hidden="true" /> {language === 'ru' ? 'Вступить в Discord' : 'Join Discord'}
+    </a>
+    <a className="life-main-github" href={repoUrl} target="_blank" rel="noopener noreferrer">
+      <Github size={15} aria-hidden="true" /> {t('View on GitHub')}
+    </a>
+    <a className="life-main-support" href="https://ko-fi.com/lifeosapp" target="_blank" rel="noopener noreferrer">
+      <Heart size={15} aria-hidden="true" /> {language === 'ru' ? 'Поддержать LifePortable' : 'Support LifePortable'}
+    </a>
+  </nav>
+  const breakCard = !hubOnly && focusTaskTitle !== undefined && <BreakCard taskTitle={focusTaskTitle} activeTime={pausedActiveTime ?? '00:00:00'} showTime={showPausedTime} running={focusRunning} language={language} links={hubLinks}
     onPause={onPauseFocus} onContinue={onContinueFocus} onReturn={onReturnToFocus} onFinish={onFinishPaused} onCancel={onCancelFocus} />
-  const addTaskButton = <button type="button" className={`life-main-add-task${!nextTask && !breakCard ? ' life-main-add-task-inline' : ''}`} onClick={() => openTasks(true)}>
+  const addTaskButton = <button type="button" className="life-main-add-task" onClick={() => openTasks(true)}>
     <span className="life-main-shortcut-icon add"><Plus size={21} aria-hidden="true" /></span>
     <strong>{t('Add a task')}</strong>
   </button>
 
   if (screen === 'home') return <main className="life-main life-main-home">
     <header className="life-main-hero">
-      <div><h1 ref={heading} tabIndex={-1}>{language === 'ru' ? 'Добро пожаловать' : 'Welcome'}{displayName?.trim() ? `, ${displayName.trim()}` : ''}!</h1>
-        <p className="life-main-thanks">{language === 'ru' ? 'Спасибо' : 'Thank you'} <Heart size={13} fill="currentColor" aria-hidden="true" /></p>
-        <a className="life-main-discord" href="https://discord.gg/y4s67MzZr" target="_blank" rel="noopener noreferrer">
-          {language === 'ru' ? 'Вступить в Discord' : 'Join Discord'} <ArrowRight size={15} aria-hidden="true" />
-        </a>
-        <a className="life-main-github" href={repoUrl} target="_blank" rel="noopener noreferrer">
-          <Github size={15} aria-hidden="true" /> {t('View on GitHub')}
-        </a>
-        <a className="life-main-support" href="https://ko-fi.com/lifeosapp" target="_blank" rel="noopener noreferrer">
-          <Heart size={15} aria-hidden="true" /> {language === 'ru' ? 'Поддержать LifeOS' : 'Support LifeOS'}
-        </a>
+      <div><span className="life-main-hub-name">Hub</span>
+        <div className="life-main-celebration"><h1 ref={heading} tabIndex={-1}>{language === 'ru' ? 'Спасибо' : 'Thank You'}{displayName?.trim() ? `, ${displayName.trim()}` : ''}!</h1>
+          <Sparkles size={32} aria-hidden="true" />
+        </div>
       </div>
       <div className="life-main-hero-actions">
-        <span className="home-icon-action">
+        {!hubOnly && <span className="home-icon-action">
           <button type="button" className="life-main-icon life-main-settings" aria-label={t(searchIncludesJournal ? 'Search tasks and journal' : 'Search tasks')}
             aria-haspopup="dialog" onClick={onSearch}><Search size={20} aria-hidden="true" /></button>
-        </span>
+        </span>}
         <span className="home-icon-action">
           <button type="button" className="life-main-icon life-main-settings" aria-label={t('Open settings')} onClick={onSettings}><Settings2 size={20} /></button>
         </span>
@@ -253,54 +256,69 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
     </header>
 
     <div className="life-main-stack">
-      {breakCard || <section className="life-main-today" aria-labelledby="life-main-today">
-        <div className="life-main-today-heading">
-          <h2 id="life-main-today">{t('Today')}</h2>
-          {totalToday > 0 && <span>{doneToday.length} / {totalToday} {language === 'ru' ? 'выполнено' : 'done'}</span>}
-        </div>
-        {totalToday > 0 && <progress max={totalToday} value={doneToday.length} aria-label="Today’s task progress" />}
-        {nextTask ? <>
-          <div className="life-main-next">
-            <button type="button" className="life-main-complete" aria-label={`Complete ${nextTask.title}`} onClick={() => toggleTask(nextTask)}><Circle size={22} /></button>
-            <div>
-              <button type="button" className="life-main-task-link" aria-haspopup="dialog" onClick={() => onOpenTask(nextTask.id)}>
-                <span>{nextTask.title}</span><ChevronRight size={16} aria-hidden="true" />
-              </button>
-              <p>{t('Next up')}</p>
-            </div>
-            <button type="button" className="life-main-icon life-main-start-small" aria-label={`Start ${nextTask.title}`} onClick={() => onStart(nextTask)}>
-              <Play size={17} fill="currentColor" aria-hidden="true" />
-            </button>
-          </div>
-        </> : <div className="life-main-today-empty-state">
-          <p className="life-main-today-empty">{t(doneToday.length ? 'You’re all caught up' : 'No tasks for today')}</p>
-          {addTaskButton}
-        </div>}
-      </section>}
+      {breakCard || <div className="life-main-today-area">
+        <h2 id="life-main-today">{t('Today')}</h2>
+        <section className="life-main-today" aria-labelledby="life-main-today">
+          {hubLinks}
+        </section>
+      </div>}
 
-      {(nextTask || breakCard) && addTaskButton}
+      {!hubOnly && addTaskButton}
 
-      <nav className="life-main-shortcuts" aria-label="Home shortcuts">
-        {showTasksShortcut && <button type="button" onClick={() => openTasks()}>
+      <section className="life-main-services" aria-labelledby="life-main-services-title">
+      <h2 id="life-main-services-title">Life Services</h2>
+      <nav className="life-main-shortcuts" aria-label="Life Services">
+        {showTasksShortcut && <a href="https://livetasks.vercel.app/">
           <span className="life-main-shortcut-icon tasks"><ClipboardList size={21} aria-hidden="true" /></span>
-          <strong>{t('Tasks')}</strong>
-        </button>}
-        {onJournal && <button type="button" onClick={onJournal}>
+          <strong>LifeTasks</strong>
+        </a>}
+        {onJournal && <a href="https://livejournal-lime.vercel.app/">
           <span className="life-main-shortcut-icon journal"><BookOpen size={21} aria-hidden="true" /></span>
-          <strong>{t('Journal')}</strong>
-        </button>}
-        {showFocusShortcut && <button type="button" onClick={breakCard ? onReturnToFocus : onStartOpenFocus}>
+          <strong>LifeJournal</strong>
+        </a>}
+        {showFocusShortcut && <a href="https://livetime-bay.vercel.app/">
           <span className="life-main-shortcut-icon focus"><Play size={21} aria-hidden="true" /></span>
-          <strong>{breakCard ? (language === 'ru' ? 'К таймеру' : 'Return to timer') : t('Start Focus')}</strong>
-        </button>}
-        <button type="button" onClick={onPresets}>
-          <span className="life-main-shortcut-icon focus"><Settings2 size={21} aria-hidden="true" /></span>
-          <strong>{t('Presets')}</strong>
-        </button>
+          <strong>LifeTime</strong>
+        </a>}
+        <a href="https://gymos-preview.vercel.app/" target="_blank" rel="noopener noreferrer"
+          aria-label={language === 'ru' ? 'Открыть LifeGym в новой вкладке' : 'Open LifeGym in a new tab'}>
+          <span className="life-main-shortcut-icon gym"><Dumbbell size={21} aria-hidden="true" /></span>
+          <strong>LifeGym</strong>
+        </a>
+        <a href="https://livestorage-blue.vercel.app/">
+          <span className="life-main-shortcut-icon storage"><HardDrive size={21} aria-hidden="true" /></span>
+          <strong>LifeStorage</strong>
+        </a>
+        <a href="https://liveai-theta.vercel.app/">
+          <span className="life-main-shortcut-icon ai"><Sparkles size={21} aria-hidden="true" /></span>
+          <strong>LifeAI</strong>
+        </a>
+        <div className="life-main-service-soon">
+          <span className="life-main-shortcut-icon future"><Settings2 size={21} aria-hidden="true" /></span>
+          <span className="life-main-service-copy"><strong>LifeManage</strong><small>{language === 'ru' ? 'Скоро' : 'Coming soon'}</small></span>
+        </div>
+        <div className="life-main-service-soon">
+          <span className="life-main-shortcut-icon future"><BookText size={21} aria-hidden="true" /></span>
+          <span className="life-main-service-copy"><strong>LifeBible</strong><small>{language === 'ru' ? 'Скоро' : 'Coming soon'}</small></span>
+        </div>
+        <div className="life-main-service-soon">
+          <span className="life-main-shortcut-icon future"><Code2 size={21} aria-hidden="true" /></span>
+          <span className="life-main-service-copy"><strong>LifeCode</strong><small>{language === 'ru' ? 'Скоро' : 'Coming soon'}</small></span>
+        </div>
+        <div className="life-main-service-soon">
+          <span className="life-main-shortcut-icon future"><ShieldCheck size={21} aria-hidden="true" /></span>
+          <span className="life-main-service-copy"><strong>LifeSecure</strong><small>{language === 'ru' ? 'Скоро' : 'Coming soon'}</small></span>
+        </div>
+        <div className="life-main-service-soon">
+          <span className="life-main-shortcut-icon future"><CalendarDays size={21} aria-hidden="true" /></span>
+          <span className="life-main-service-copy"><strong>LifePlan</strong><small>{language === 'ru' ? 'Скоро' : 'Coming soon'}</small></span>
+        </div>
+        <div className="life-main-service-soon">
+          <span className="life-main-shortcut-icon future"><Leaf size={21} aria-hidden="true" /></span>
+          <strong>Life OS в разработке</strong>
+        </div>
       </nav>
-      <button type="button" className="life-main-text life-main-history-link" onClick={onFocusHistory}>
-        <History size={17} aria-hidden="true" /> {t('Focus history')} <ChevronRight size={15} aria-hidden="true" />
-      </button>
+      </section>
     </div>
   </main>
 
@@ -311,11 +329,11 @@ export default function MainDashboard({ initialScreen = 'home', onReturnHome, re
 
   return <main className="life-main life-main-tasks">
     <header className="life-main-tasks-header">
-      <button type="button" className="life-main-icon" aria-label={t(returnLabel)} onClick={() => {
+      {!hideBack && <button type="button" className="life-main-icon" aria-label={t(returnLabel)} onClick={() => {
         if (onReturnHome) onReturnHome()
         else { setScreen('home'); showList('today') }
-      }}><ArrowLeft size={21} /></button>
-      <h1 ref={heading} tabIndex={-1}>{t('Tasks')}</h1>
+      }}><ArrowLeft size={21} /></button>}
+      <h1 ref={heading} tabIndex={-1}>LifeTasks</h1>
       <button type="button" className="life-main-icon" aria-label={t('Add task')} aria-haspopup="dialog" disabled={!canAdd} onClick={() => addTo(addList)}><Plus size={23} /></button>
     </header>
 

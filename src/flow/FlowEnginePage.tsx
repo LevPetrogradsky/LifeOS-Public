@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, Check, ChevronRight, History, X } from 'lucide-react'
-import { sessionMinutes, type FlowDiscovery, type FlowEngineData, type LifeOSData } from '../data'
+import { sessionMinutes, type FlowDiscovery, type FlowEngineData, type LiveOSData } from '../data'
 import { emptyFlowEngineData } from '../data'
 import { canDistillPrinciple, factorObservations, hypothesisSuggestion, principleDraft, principleHasEvidence, recentSessions, summarizeSessions, updateFlowEngine } from './model'
 import { DiscoveryConversation, DiscoveryQuestion, DiscoveryResults, discoveryFromAnswers, emptyAnswers, prompts } from './Discovery'
@@ -10,8 +10,8 @@ import './flow.css'
 export interface FlowEnginePageProps {
   language?: AppLanguage
   timeFormat: '12' | '24'
-  data: LifeOSData
-  onUpdate: (change: (current: LifeOSData) => LifeOSData) => boolean
+  data: LiveOSData
+  onUpdate: (change: (current: LiveOSData) => LiveOSData) => boolean
   onReturn: () => void
   returnLabel: string
   onReflectionSaved: () => void

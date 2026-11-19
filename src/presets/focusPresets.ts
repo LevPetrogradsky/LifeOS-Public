@@ -1,4 +1,4 @@
-import type { BreakReminderMinutes, LifeOSData } from '../data'
+import type { BreakReminderMinutes, LiveOSData } from '../data'
 
 export type FocusPresetId = 'work' | 'creativity' | 'grounding' | 'bible-reading'
 
@@ -56,7 +56,7 @@ export function findFocusPreset(id: FocusPresetId | undefined): FocusPreset | un
   return focusPresets.find(preset => preset.id === id)
 }
 
-export function applyFocusPreset(data: LifeOSData, id: FocusPresetId): LifeOSData & { focusPresetId: FocusPresetId } {
+export function applyFocusPreset(data: LiveOSData, id: FocusPresetId): LiveOSData & { focusPresetId: FocusPresetId } {
   const preset = findFocusPreset(id)
   if (!preset) throw new Error('Unknown focus preset')
 

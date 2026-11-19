@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { emptyData, validateLifeOSData } from '../src/data.ts'
+import { emptyData, validateLiveOSData } from '../src/data.ts'
 import { applyFocusPreset, focusPresets, focusPresetCopy } from '../src/presets/focusPresets.ts'
 
 test('all four focus presets are available with distinct identifiers', () => {
@@ -30,5 +30,5 @@ test('applying a preset saves existing focus settings without changing the check
   assert.equal(next.activeSession?.id, 'active-1')
   assert.equal(next.activeSession?.pausedDurationMs, 5000)
   assert.equal(next.focusCheckinEnabled, false)
-  assert.equal(validateLifeOSData(JSON.parse(JSON.stringify(next))), true)
+  assert.equal(validateLiveOSData(JSON.parse(JSON.stringify(next))), true)
 })

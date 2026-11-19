@@ -1,10 +1,9 @@
 import MainDashboard from './MainDashboard'
 import MainFocus from './MainFocus'
 import TaskHistory from './TaskHistory'
-import AskLifeOS from './home/AskLifeOS'
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent, type ReactNode, type SetStateAction } from 'react'
-import { ArrowRight, BookOpen, ClipboardList, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
-import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LifeOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
+import { ArrowRight, BookOpen, ClipboardList, History, House, Leaf, MessageCircle, Play, Settings2, Sparkles } from 'lucide-react'
+import { elapsedClock, focusedDuration, loadData, recordUnratedSession, restoreBackup, saveData, shortcuts, shortcutVisible, timerView, visibleShortcuts, STORAGE_KEY, type Factor, type JournalFolderAppearance, type LiveOSData, type Shortcut, type ShortcutLocation, type Task } from './data'
 import { base64ToBytes, buildNoteBlocks, makeImportedNote, type SourceIndex } from './notes'
 import JournalPage, { type JournalDraft } from './journal/JournalPage'
 import { detectJournalDevice } from './journal/device'
@@ -14,25 +13,29 @@ import { cloudConsentKey, guestRecoveryStorageKey, normalizeRecoveryCode, readRe
 import FlowEnginePage from './flow/FlowEnginePage'
 import BreakReminder from './settings/BreakReminder'
 import SettingsPage from './settings/SettingsPage'
+import LiveStoragePage from './settings/LiveStoragePage'
+import type { JournalCloudControls } from './settings/JournalCloudPanel'
 import PostFocusChoice from './PostFocusChoice'
 import FocusPresets from './presets/PresetsPage'
 import { applyFocusPreset, findFocusPreset, type FocusPresetId } from './presets/focusPresets'
 import { useDeleteUndo } from './delete-undo'
 import UnifiedSearch from './search/UnifiedSearch'
 import type { AccountEntryMode } from './settings/AccountPanel'
-import WebOnboarding, { type OnboardingDestination } from './onboarding/WebOnboarding'
+import OnePageOnboarding from './onboarding/OnePageOnboarding'
 import { completionKey, initialOnboardingMode } from './onboarding/state'
 import { translate, type AppLanguage } from './language'
 import './reflection-confirmation.css'
 import './mobile-navigation.css'
 import { mobileNavigationLayout } from './mobile-navigation'
+import { repositoryUrl, serviceMode, serviceName } from './service-mode'
 
-type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'settings' | 'focus-history' | 'presets'
+type View = Exclude<Shortcut, 'focus'> | 'main' | 'ask' | 'ai' | 'settings' | 'storage' | 'focus-history' | 'presets'
 const shortcutIcons = { tasks: ClipboardList, journal: BookOpen, focus: Play, flow: MessageCircle }
+const serviceLabels = { tasks: 'LifeTasks', journal: 'LifeJournal', focus: 'LifeTime', flow: '3 questions' }
 const factors: Factor[] = ['Meaningful Goal', 'Personal Control', 'Fast Feedback', 'Other']
-const repoUrl = 'https://github.com/ProgrammerLevpetrogradsky/LifeOS-Public'
+const repoUrl = repositoryUrl
 
-function App({ storageKey, account, existingAccount = false, journalCloudToken, guestCloud = false }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean }) {
+function App({ storageKey, account, existingAccount = false, journalCloudToken, guestCloud = false, accountOnboardingPreference, onAccountOnboardingChange }: { storageKey?: string; account?: (language: AppLanguage, initialMode?: AccountEntryMode) => ReactNode; existingAccount?: boolean; journalCloudToken?: () => Promise<string | null>; guestCloud?: boolean; accountOnboardingPreference?: boolean | null; onAccountOnboardingChange?: (disabled: boolean) => Promise<boolean> }) {
   const effectiveStorageKey = storageKey ?? STORAGE_KEY
   const [cloudEnabled, setCloudEnabled] = useState(() => {
     try { return Boolean(journalCloudToken && localStorage.getItem(cloudConsentKey(effectiveStorageKey)) === 'true' && (!guestCloud || readRecoveryCode())) }
@@ -40,30 +43,38 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   })
   const [recoveryCode, setRecoveryCode] = useState(() => guestCloud ? readRecoveryCode() : null)
   const [loadResult, setLoadResult] = useState(() => loadData(storageKey))
-  const [onboardingMode, setOnboardingMode] = useState(() => initialOnboardingMode(storageKey, localStorage, window.location.search, existingAccount))
+  const [onboardingMode, setOnboardingMode] = useState(() => serviceMode === 'hub' ? initialOnboardingMode(storageKey, localStorage, window.location.search, accountOnboardingPreference === true || (existingAccount && accountOnboardingPreference == null)) : null)
   const data = loadResult.data
   const language = data.language ?? 'en'
   const timeFormat = data.timeFormat ?? (language === 'ru' ? '24' : '12')
   const t = (text: string) => translate(language, text)
   const accountContent = account?.(language)
   const dataRef = useRef(data)
-  const hiddenSections = data.hiddenSections ?? []
-  const showHome = !hiddenSections.includes('main')
-  const showAskLifeOS = data.askLifeOSInBar === true
+  const showHome = serviceMode === 'hub'
+  const showAskLiveOS = serviceMode === 'hub'
   const onHome = (id: Shortcut) => shortcutVisible(data, id, 'home')
-  const inBar = (id: Shortcut) => shortcutVisible(data, id, 'bar')
-  const defaultView = showHome ? 'main' : (['journal', 'tasks'] as const).find(inBar) ?? 'settings'
+  const inBar = (id: Shortcut) => serviceMode === 'hub' ? false : id === serviceMode || (serviceMode === 'time' && id === 'focus')
+  const defaultView: View = serviceMode === 'time' ? 'presets' : serviceMode === 'tasks' || serviceMode === 'journal' ? serviceMode : showHome ? 'main' : (['journal', 'tasks'] as const).find(inBar) ?? 'settings'
   const [requestedView, setView] = useState<View>(() => {
-    try { return localStorage.getItem(`${storageKey ?? STORAGE_KEY}.last-view`) === 'journal' ? 'journal' : defaultView }
+    try {
+      if (serviceMode === 'hub') {
+        const requested = new URLSearchParams(window.location.search).get('open')
+        if (requested === 'ai' || requested === 'storage') return requested
+      }
+      return defaultView
+    }
     catch { return defaultView }
   })
   const [homeNavigationKey, setHomeNavigationKey] = useState(0)
-  const [presetsReturnView, setPresetsReturnView] = useState<View>(defaultView)
+  const [storageReturnView, setStorageReturnView] = useState<View>(defaultView)
   const [reflectionReturnView, setReflectionReturnView] = useState<View>(defaultView)
   const [reflectionNotice, setReflectionNotice] = useState('')
   const [postFocusReflection, setPostFocusReflection] = useState(false)
-  const isHidden = (page: View) => page === 'main' ? !showHome
+  const isHidden = (page: View) => serviceMode === 'hub' && !(['main', 'ask', 'ai', 'settings', 'storage'] as View[]).includes(page) ? true
+    : page === 'ai' ? serviceMode !== 'hub' : page === 'main' ? !showHome
     : page === 'flow' ? !postFocusReflection
+      : page === 'storage' ? serviceMode !== 'hub'
+      : serviceMode !== 'hub' && page === 'journal' && serviceMode !== 'journal' ? true
       : page === 'journal' && !inBar(page) && !(showHome && onHome(page))
   const view = isHidden(requestedView) ? defaultView : requestedView
   const showJournal = !isHidden('journal')
@@ -159,7 +170,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     return () => window.clearTimeout(timeout)
   }, [reflectionNotice])
 
-  const update = (change: (current: LifeOSData) => LifeOSData) => {
+  const update = (change: (current: LiveOSData) => LiveOSData) => {
     if (loadResult.error) { setStorageError(true); return false }
     let next = change(dataRef.current)
     try {
@@ -558,7 +569,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `lifeos-export-${new Date().toISOString().slice(0, 10)}.json`
+    link.download = `liveos-export-${new Date().toISOString().slice(0, 10)}.json`
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
@@ -575,9 +586,9 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const openPresets = () => {
-    setPresetsReturnView(view)
-    navigate('presets')
+  const openStorage = () => {
+    setStorageReturnView(view)
+    navigate('storage')
   }
 
   const applyPreset = (id: FocusPresetId) => {
@@ -616,9 +627,9 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     return saved
   }
 
-  const returnLabel = showHome ? 'Back to Home' : 'Back to Settings'
+  const returnLabel = showHome ? 'Back to Hub' : 'Back to Settings'
   const returnFromSection = () => navigate(showHome ? 'main' : 'settings')
-  const reflectionReturnLabel = reflectionReturnView === 'main' ? 'Back to Home'
+  const reflectionReturnLabel = reflectionReturnView === 'main' ? 'Back to Hub'
     : reflectionReturnView === 'ask' ? 'Back to Guide'
       : reflectionReturnView === 'journal' ? 'Back to Journal'
         : reflectionReturnView === 'tasks' ? 'Back to Tasks' : 'Back to Settings'
@@ -628,6 +639,13 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     setView('journal')
     setJournalPrompt(false)
     setJournalSearchResult({ id })
+  }
+
+  const journalSyncControls: JournalCloudControls = {
+    available: Boolean(journalCloudToken), enabled: cloudEnabled, guest: guestCloud, code: recoveryCode,
+    status: journalCloudStatus, error: journalCloudError, lastSavedAt: journalLastSavedAt,
+    onRetry: () => void journalCloud.current?.sync(), onEnable: enableJournalCloud,
+    onVerifyRecovery: verifyRecoveryCode, onRecover: recoverJournalCloud,
   }
 
   const changeHomeVisibility = (visible: boolean) => update(current => {
@@ -644,28 +662,29 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
   }))
 
   const renderNavigation = (iconSize: number, bottom = false) => <>
-    {showHome && <NavButton icon={<House size={iconSize} />} label={t('Home')} selected={view === 'main'} onClick={() => {
+    {showHome && <NavButton icon={<House size={iconSize} />} label="Hub" selected={view === 'main'} onClick={() => {
       if (view === 'main') setHomeNavigationKey(key => key + 1)
       navigate('main')
     }} />}
     {!bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
-    {visibleShortcuts.filter(({ id }) => inBar(id)).sort((a, b) => bottom ? Number(b.id === 'tasks') - Number(a.id === 'tasks') : 0).map(({ id, label }) => {
+    {visibleShortcuts.filter(({ id }) => inBar(id)).sort((a, b) => bottom ? Number(b.id === 'tasks') - Number(a.id === 'tasks') : 0).map(({ id }) => {
       const Icon = shortcutIcons[id]
-      return <NavButton key={id} icon={<Icon size={iconSize} />} label={t(label)} selected={view === id}
+      return <NavButton key={id} icon={<Icon size={iconSize} />} label={serviceLabels[id]} selected={view === id}
         onClick={() => {
           if (id !== 'focus') navigate(id)
           else if (data.activeSession) returnToFocus()
           else startFocus()
         }} />
     })}
-    {showAskLifeOS && <NavButton icon={<MessageCircle size={iconSize} />} label={t('Guide')} selected={view === 'ask'} onClick={() => navigate('ask')} />}
+    {serviceMode === 'time' && <NavButton icon={<History size={iconSize} />} label={t('Focus history')} selected={view === 'focus-history'} onClick={() => navigate('focus-history')} />}
+    {showAskLiveOS && <NavButton icon={<MessageCircle size={iconSize} />} label={t('Guide')} selected={view === 'ask'} onClick={() => navigate('ask')} />}
     {bottom && <NavButton icon={<Settings2 size={iconSize} />} label={t('Settings')} selected={view === 'settings'} onClick={() => navigate('settings')} />}
   </>
 
   const renderBrand = (size: number) => {
-    const logo = <><span className="brand-mark"><Leaf size={size} strokeWidth={2.4} /></span><span>LifeOS<span className="brand-dot">.</span></span></>
+    const logo = <><span className="brand-mark"><Leaf size={size} strokeWidth={2.4} /></span><span>{serviceName}<span className="brand-dot">.</span></span></>
     return showHome
-      ? <button className="brand" onClick={() => navigate('main')} aria-label="LifeOS home">{logo}</button>
+      ? <button className="brand" onClick={() => navigate('main')} aria-label={`${serviceName} home`}>{logo}</button>
       : <div className="brand">{logo}</div>
   }
 
@@ -690,22 +709,25 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     window.history.replaceState(null, '', url.pathname + url.search + url.hash)
   }
 
-  const finishOnboarding = (name: string, destination: OnboardingDestination) => {
+  const finishOnboarding = async (name: string, disableAll: boolean) => {
     if (onboardingMode === 'first-run') {
+      if (disableAll && onAccountOnboardingChange && !await onAccountOnboardingChange(true)) return false
       if (!update(current => ({ ...current, displayName: name || undefined }))) return false
       try { localStorage.setItem(completionKey(storageKey), 'done') } catch { /* Saved data itself marks an existing user. */ }
     }
     clearOnboardingPreviewUrl()
     setOnboardingMode(null)
-    navigate(destination === 'focus' ? 'presets' : destination)
+    const requested = new URLSearchParams(window.location.search).get('open')
+    navigate(requested === 'ai' || requested === 'storage' ? requested : 'main')
     return true
   }
 
-  if (onboardingMode) return <WebOnboarding mode={onboardingMode} displayName={data.displayName ?? ''} language={language}
+  if (onboardingMode) return <OnePageOnboarding mode={onboardingMode} displayName={data.displayName ?? ''} language={language}
     account={account && !existingAccount ? mode => account(language, mode) : undefined}
+    accountPreferenceAvailable={Boolean(onAccountOnboardingChange)}
     onComplete={finishOnboarding} onClose={() => { clearOnboardingPreviewUrl(); setOnboardingMode(null) }} />
 
-  if (data.activeSession && ((!pausedSession && minimizedFocusScreen !== data.activeSession.id) ||
+  if (serviceMode !== 'hub' && data.activeSession && ((!pausedSession && minimizedFocusScreen !== data.activeSession.id) ||
     (pausedSession !== null && pausedFocusScreen === pausedSession.id))) return <>
     <MainFocus
       language={language}
@@ -722,7 +744,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
       onResume={() => resumeSession()}
       onLeave={() => pauseSession(false)}
       onMinimize={minimizeFocus}
-      returnDestination={showHome ? 'Home' : shortcuts.find(({ id }) => id === defaultView)?.label ?? 'Settings'}
+      returnDestination={showHome ? 'Hub' : shortcuts.find(({ id }) => id === defaultView)?.label ?? 'Settings'}
       onFinish={endSession}
     >
       {breakReminder}
@@ -730,7 +752,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     {undoNotice}
   </>
 
-  if (data.pendingSession && !checkingIn) return <PostFocusChoice
+  if (serviceMode !== 'hub' && data.pendingSession && !checkingIn) return <PostFocusChoice
     language={language}
     taskTitle={data.pendingSession.taskTitle}
     storageError={storageError}
@@ -739,10 +761,10 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     onSkip={skipPostFocus}
   />
 
-  if (data.pendingSession) return (<>
+  if (serviceMode !== 'hub' && data.pendingSession) return (<>
     <main className="checkin-screen page-container">
       {storageError && <div className="storage-error" role="alert">{t('Your browser could not save the check-in. Your answers are still here. Check available storage and try again.')}</div>}
-      <div className="focus-top"><div className="brand-mark"><Leaf size={18} strokeWidth={2.3} /></div><span>{t('LifeOS / Check-in')}</span></div>
+      <div className="focus-top"><div className="brand-mark"><Leaf size={18} strokeWidth={2.3} /></div><span>{t('LifePortable / Check-in')}</span></div>
       <div className="checkin-card">
         <div className="section-icon"><Sparkles size={20} /></div>
         <p className="eyebrow">{t('A MOMENT TO REFLECT')}</p>
@@ -763,7 +785,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
     {undoNotice}
   </>)
 
-  const visibleNavCount = Number(showHome) + visibleShortcuts.filter(({ id }) => inBar(id)).length + Number(showAskLifeOS) + 1
+  const visibleNavCount = Number(showHome) + visibleShortcuts.filter(({ id }) => inBar(id)).length + Number(serviceMode === 'time') + Number(showAskLiveOS) + 1
   const mobileNavLayout = mobileNavigationLayout(visibleNavCount)
   const extraNavHeight = (mobileNavLayout.rows - 1) * 66
   const mobileNavStyle = {
@@ -777,7 +799,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
       <aside className="sidebar">
         {renderBrand(20)}
         <nav aria-label="Main navigation">{renderNavigation(19)}</nav>
-        <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>{t('A little space for what matters.')}</p></div><span>LifeOS v0.1</span></div>
+        <div className="sidebar-foot"><div className="sidebar-quote"><span>✳</span><p>{t('A little space for what matters.')}</p></div><span>{serviceName} v0.1</span></div>
       </aside>
 
       <div className="main-area">
@@ -785,13 +807,15 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
         {(storageError || loadResult.error) && <div className="storage-error" role="alert">{loadResult.error ?? 'Your browser could not save changes locally. Your unsaved text is still here. Check available storage, then try again.'} {loadResult.error && 'Import a valid backup below to recover. Existing saved content will not be changed until recovery succeeds.'}</div>}
         {backupMessage && <div className="storage-error" role="status">{backupMessage}</div>}
         {reflectionNotice && <div className="lifeos-reflection-confirmation" role="status">{reflectionNotice}</div>}
-        {breakReminder}
+        {serviceMode !== 'hub' && breakReminder}
         {(view === 'main' || view === 'tasks') && <MainDashboard key={`${view}:${homeNavigationKey}`}
+          hubOnly={serviceMode === 'hub'}
           initialScreen={view === 'tasks' ? 'tasks' : 'home'}
+          hideBack={serviceMode === 'tasks'}
           onReturnHome={view === 'tasks' ? returnFromSection : undefined}
           returnLabel={returnLabel}
-          showTasksShortcut={onHome('tasks')}
-          showFocusShortcut={onHome('focus')}
+          showTasksShortcut={serviceMode === 'hub' || onHome('tasks')}
+          showFocusShortcut={serviceMode === 'hub' || onHome('focus')}
           searchIncludesJournal={showJournal}
           repoUrl={repoUrl}
           tasks={data.tasks}
@@ -810,22 +834,25 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           onOpenTask={openTaskHistory}
           onDeleteTask={deleteTask}
           onStart={startFocus}
-          onStartOpenFocus={() => startFocus()}
-          onJournal={onHome('journal') ? () => navigate('journal') : undefined}
-          onPresets={openPresets}
-          onFocusHistory={() => navigate('focus-history')}
+          onJournal={serviceMode === 'hub' || onHome('journal') ? () => navigate('journal') : undefined}
           onSettings={() => navigate('settings')}
           onSearch={() => setSearchOpen(true)}
         />}
 
         {view === 'ask' && <main className="life-main life-main-guide-page">
           <h1>{t('Guide')}</h1>
-          <AskLifeOS language={language} actions={{
-            tasks: () => navigate('tasks'),
-            journal: showJournal ? () => navigate('journal') : undefined,
-            focus: data.activeSession ? returnToFocus : () => { startFocus() },
-            settings: () => navigate('settings'),
-          }} />
+          <p className="life-main-guide-intro">{language === 'ru'
+            ? 'LifePortable помогает перейти к нужному сервису. На главной странице выберите LifeTasks, LifeJournal или LifeTime; работа с ними происходит в отдельных сервисах.'
+            : 'LifePortable helps you find a service. Choose LifeTasks, LifeJournal, or LifeTime on the home page; each service has its own workspace.'}</p>
+          <p className="life-main-guide-intro">{language === 'ru'
+            ? 'Аккаунт и доступное облачное сохранение находятся в LifeStorage. Настройки Hub меняют только внешний вид и язык этой страницы.'
+            : 'Account access and available cloud saving are in LifeStorage. Hub settings control this page’s appearance and language.'}</p>
+        </main>}
+
+        {view === 'ai' && <main className="life-main life-main-guide-page">
+          <h1>LifeAI</h1>
+          <p className="life-main-guide-intro">{language === 'ru' ? 'Отдельная публичная страница LifeAI открыта. Генерация ответов пока не доступна.' : 'The separate public LifeAI page is open. Answer generation is not available yet.'}</p>
+          <a href="https://liveai-theta.vercel.app/">{language === 'ru' ? 'Открыть LifeAI' : 'Open LifeAI'}</a>
         </main>}
 
         {view === 'presets' && <FocusPresets
@@ -833,7 +860,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
           appliedPresetId={data.focusPresetId}
           sessionState={data.pendingSession ? 'pending' : data.activeSession ? 'active' : 'idle'}
           onApply={applyPreset}
-          onBack={() => navigate(presetsReturnView)}
+          onBack={() => navigate(serviceMode === 'time' ? 'focus-history' : defaultView)}
         />}
 
         {(view === 'flow' || view === 'focus-history') && <FlowEnginePage key={view}
@@ -850,6 +877,7 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
 
         {view === 'journal' && (
           <JournalPage language={language} timeFormat={timeFormat} entries={data.journal} folders={data.journalFolders ?? []} draft={journalDraft} onDraftChange={changeJournalDraft}
+            hideBack={serviceMode === 'journal'}
             draftSaveError={journalDraftError}
             draftStorageKey={storageKey} onDraftStorageError={() => setStorageError(true)}
             cloudStatus={cloudEnabled ? journalCloudStatus : undefined}
@@ -862,45 +890,39 @@ function App({ storageKey, account, existingAccount = false, journalCloudToken, 
             onCreate={createJournalEntry} onEdit={editJournalEntry} onDelete={deleteJournalEntry} />
         )}
 
+        {view === 'storage' && <LiveStoragePage
+          account={accountContent}
+          journalSync={journalSyncControls}
+          language={language}
+          onSaveCopy={exportData}
+          onBack={() => navigate(storageReturnView)}
+          onHub={() => navigate('main')}
+          showContextBack={storageReturnView === 'settings'}
+          onboardingDisabled={accountOnboardingPreference}
+          onOnboardingChange={onAccountOnboardingChange}
+          backLabel={storageReturnView === 'settings' ? (language === 'ru' ? 'Назад к настройкам' : 'Back to Settings') : t('Back to Hub')}
+        />}
+
         {view === 'settings' && (
           <SettingsPage
+            hubOnly={serviceMode === 'hub'}
             account={accountContent}
-            journalSync={{ available: Boolean(journalCloudToken), enabled: cloudEnabled, guest: guestCloud, code: recoveryCode, status: journalCloudStatus,
-              error: journalCloudError, lastSavedAt: journalLastSavedAt,
-              onRetry: () => void journalCloud.current?.sync(), onEnable: enableJournalCloud,
-              onVerifyRecovery: verifyRecoveryCode, onRecover: recoverJournalCloud }}
+            onOpenStorage={serviceMode === 'hub' ? openStorage : undefined}
+            journalSync={journalSyncControls}
             theme={data.theme}
             language={data.language ?? 'en'}
-            timeFormat={timeFormat}
-            onTimeFormatChange={timeFormat => update(current => ({ ...current, timeFormat }))}
             onLanguageChange={language => update(current => ({ ...current, language }))}
             onThemeChange={theme => update(current => ({ ...current, theme }))}
-            interactiveTips={data.interactiveTips !== false}
-            onInteractiveTipsChange={interactiveTips => update(current => ({ ...current, interactiveTips }))}
             showHome={showHome}
             onHomeVisibilityChange={changeHomeVisibility}
-            showAskLifeOS={showAskLifeOS}
-            onAskLifeOSVisibilityChange={askLifeOSInBar => update(current => ({ ...current, askLifeOSInBar }))}
+            showAskLiveOS={showAskLiveOS}
+            onAskLiveOSVisibilityChange={askLiveOSInBar => update(current => ({ ...current, askLiveOSInBar }))}
             shortcutVisible={(id, location) => location === 'home' ? onHome(id) : inBar(id)}
             onShortcutChange={changeShortcut}
             onExport={exportData}
             onImport={importBackup}
-            repoUrl={repoUrl}
             displayName={data.displayName ?? ''}
             onDisplayNameChange={displayName => update(current => ({ ...current, displayName: displayName || undefined }))}
-            reminderMinutes={reminderMinutes}
-            timerDefaultView={timerView(data)}
-            onTimerDefaultViewChange={timerDefaultView => update(current => ({ ...current, timerDefaultView }))}
-            onReminderMinutesChange={breakReminderMinutes => update(current => ({ ...current, breakReminderMinutes, focusPresetId: undefined }))}
-            focusCheckin={{
-              enabled: data.focusCheckinEnabled !== false,
-              onChange: focusCheckinEnabled => update(current => ({ ...current, focusCheckinEnabled })),
-            }}
-            postFocusAction={{
-              value: data.postFocusAction,
-              onChange: postFocusAction => update(current => ({ ...current, postFocusAction })),
-            }}
-            onOpenPresets={openPresets}
           />
         )}
       </div>

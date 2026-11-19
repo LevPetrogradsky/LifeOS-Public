@@ -147,34 +147,34 @@ test('restoring a backup preserves existing private notes and restores other dat
 
 test('backup import rejects malformed and incomplete data', () => {
   assert.throws(() => parseBackup('{broken'), /valid JSON/)
-  assert.throws(() => parseBackup('{"version":1}'), /valid LifeOS backup structure/)
+  assert.throws(() => parseBackup('{"version":1}'), /valid LifePortable backup structure/)
 })
 
 test('backup import rejects malformed base64, byte lengths, and decoded text', async () => {
   const malformedEncoding = await backupWithNote()
   malformedEncoding.importedNotes[0].rawBytesBase64 = 'dGV4dA'
-  assert.throws(() => parseBackup(JSON.stringify(malformedEncoding)), /valid LifeOS backup structure/)
+  assert.throws(() => parseBackup(JSON.stringify(malformedEncoding)), /valid LifePortable backup structure/)
 
   const wrongLength = await backupWithNote()
   wrongLength.importedNotes[0].byteLength++
-  assert.throws(() => parseBackup(JSON.stringify(wrongLength)), /valid LifeOS backup structure/)
+  assert.throws(() => parseBackup(JSON.stringify(wrongLength)), /valid LifePortable backup structure/)
 
   const wrongText = await backupWithNote()
   wrongText.importedNotes[0].rawSource = 'different text'
-  assert.throws(() => parseBackup(JSON.stringify(wrongText)), /valid LifeOS backup structure/)
+  assert.throws(() => parseBackup(JSON.stringify(wrongText)), /valid LifePortable backup structure/)
 })
 
 test('backup import rejects invalid Note block ranges and gaps', async () => {
   const outOfBounds = await backupWithNote()
   outOfBounds.importedNotes[0].noteBlocks = [{ order: 1, title: 'Only block', startByte: 0, endByte: 5 }]
-  assert.throws(() => parseBackup(JSON.stringify(outOfBounds)), /valid LifeOS backup structure/)
+  assert.throws(() => parseBackup(JSON.stringify(outOfBounds)), /valid LifePortable backup structure/)
 
   const withGap = await backupWithNote()
   withGap.importedNotes[0].noteBlocks = [
     { order: 1, title: 'First', startByte: 0, endByte: 2 },
     { order: 2, title: 'Second', startByte: 3, endByte: 4 },
   ]
-  assert.throws(() => parseBackup(JSON.stringify(withGap)), /valid LifeOS backup structure/)
+  assert.throws(() => parseBackup(JSON.stringify(withGap)), /valid LifePortable backup structure/)
 })
 
 test('backup import verifies SHA-256 against original Note bytes', async () => {
@@ -201,7 +201,7 @@ test('a rejected backup leaves existing saved data untouched', async () => {
   assert.equal(memory.size, 1)
 })
 
-test('a current Note with mismatched SHA-256 leaves LifeOS and recovery keys untouched', async () => {
+test('a current Note with mismatched SHA-256 leaves LiveOS Portable and recovery keys untouched', async () => {
   const current = await backupWithNote('keep this original note')
   current.importedNotes[0].sha256 = 'a'.repeat(64)
   current.importedNotes[0].id = current.importedNotes[0].sha256

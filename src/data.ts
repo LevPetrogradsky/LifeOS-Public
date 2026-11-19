@@ -5,7 +5,7 @@ import type { CloudOperation } from './journal/cloud-model.ts'
 
 export type Theme = 'light' | 'dark' | 'system'
 export const navigationSections = [
-  { id: 'main', label: 'Home' },
+  { id: 'main', label: 'Hub' },
   { id: 'flow', label: '3 questions' },
   { id: 'journal', label: 'Journal' },
 ] as const
@@ -22,7 +22,7 @@ export type Shortcut = typeof shortcuts[number]['id']
 export type ShortcutLocation = 'home' | 'bar'
 export type ShortcutPreferences = Partial<Record<Shortcut, Partial<Record<ShortcutLocation, boolean>>>>
 
-export function shortcutVisible(data: LifeOSData, shortcut: Shortcut, location: ShortcutLocation): boolean {
+export function shortcutVisible(data: LiveOSData, shortcut: Shortcut, location: ShortcutLocation): boolean {
   return data.shortcutPreferences?.[shortcut]?.[location] ?? (
     location === 'home'
       ? !((shortcut === 'journal' || shortcut === 'flow') && data.hiddenSections?.includes(shortcut))
@@ -174,7 +174,7 @@ export interface NoteBlock {
   endByte: number
 }
 
-export interface LifeOSData {
+export interface LiveOSData {
   version: 1
   tasks: Task[]
   sessions: FocusSession[]
@@ -190,7 +190,7 @@ export interface LifeOSData {
   language?: 'en' | 'ru'
   interactiveTips?: boolean
   hiddenSections?: NavigationSection[]
-  askLifeOSInBar?: boolean
+  askLiveOSInBar?: boolean
   shortcutPreferences?: ShortcutPreferences
   focusCheckinEnabled?: boolean
   // An absent value retains the old focus check-in behavior until the user chooses.
@@ -205,11 +205,11 @@ export interface LifeOSData {
 
 export const STORAGE_KEY = 'lifeos.v1'
 
-export const timerView = (data: Pick<LifeOSData, 'timerDefaultView'>): 'full' | 'compact' => data.timerDefaultView ?? 'compact'
+export const timerView = (data: Pick<LiveOSData, 'timerDefaultView'>): 'full' | 'compact' => data.timerDefaultView ?? 'compact'
 
-export type LoadResult = { data: LifeOSData; error: string | null }
+export type LoadResult = { data: LiveOSData; error: string | null }
 
-export const emptyData = (): LifeOSData => ({
+export const emptyData = (): LiveOSData => ({
   version: 1,
   tasks: [],
   sessions: [],
@@ -219,6 +219,8 @@ export const emptyData = (): LifeOSData => ({
   pendingSession: null,
   theme: 'system',
   language: 'en',
+  askLiveOSInBar: true,
+  shortcutPreferences: { tasks: { bar: false }, journal: { bar: false } },
 })
 
 export const emptyFlowEngineData = (): FlowEngineData => ({ discoveries: [], hypotheses: [], experiments: [], principles: [] })
@@ -265,7 +267,7 @@ function validImportedNote(value: unknown): value is ImportedNote {
   return value.noteBlocks === undefined || validNoteBlocks(value.noteBlocks, bytes.byteLength)
 }
 
-export function validateLifeOSData(value: unknown): value is LifeOSData {
+export function validateLiveOSData(value: unknown): value is LiveOSData {
   if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.tasks) || !Array.isArray(value.sessions) || !Array.isArray(value.journal) || !Array.isArray(value.importedNotes)) return false
   const validActiveSession = (item: unknown): item is ActiveSession =>
     isRecord(item) && isString(item.id) && (item.taskId === null || isString(item.taskId)) && isString(item.taskTitle) && isTimestamp(item.startedAt) &&
@@ -289,7 +291,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
   if (value.interactiveTips !== undefined && typeof value.interactiveTips !== 'boolean') return false
   if (value.hiddenSections !== undefined && (!Array.isArray(value.hiddenSections) ||
     !value.hiddenSections.every(id => navigationSections.some(section => section.id === id)))) return false
-  if (value.askLifeOSInBar !== undefined && typeof value.askLifeOSInBar !== 'boolean') return false
+  if (value.askLiveOSInBar !== undefined && typeof value.askLiveOSInBar !== 'boolean') return false
   if (value.shortcutPreferences !== undefined && (!isRecord(value.shortcutPreferences) ||
     !Object.entries(value.shortcutPreferences).every(([id, options]) =>
       shortcuts.some(shortcut => shortcut.id === id) && isRecord(options) &&
@@ -350,7 +352,7 @@ export function validateLifeOSData(value: unknown): value is LifeOSData {
   return value.tasks.every(validTask) && value.sessions.every(validSession) && value.journal.every(validJournal) && value.importedNotes.every(validImportedNote) && validFlowEngine
 }
 
-export function parseBackup(raw: string, preserveSync = false): LifeOSData {
+export function parseBackup(raw: string, preserveSync = false): LiveOSData {
   let parsed: unknown
   try { parsed = JSON.parse(raw) } catch { throw new Error('This file is not valid JSON.') }
   if (isRecord(parsed) && Array.isArray(parsed.tasks)) {
@@ -359,13 +361,13 @@ export function parseBackup(raw: string, preserveSync = false): LifeOSData {
       ? { ...task, list: 'someday' }
       : task)
   }
-  if (!validateLifeOSData(parsed)) throw new Error('This file does not have a valid LifeOS backup structure.')
+  if (!validateLiveOSData(parsed)) throw new Error('This file does not have a valid LifePortable backup structure.')
   // A backup can move between accounts; never carry its original account's sync queue.
-  if (!preserveSync) delete (parsed as LifeOSData).journalCloud
+  if (!preserveSync) delete (parsed as LiveOSData).journalCloud
   return parsed
 }
 
-export async function parseBackupWithIntegrity(raw: string): Promise<LifeOSData> {
+export async function parseBackupWithIntegrity(raw: string): Promise<LiveOSData> {
   const data = parseBackup(raw)
   for (const note of data.importedNotes) {
     const bytes = decodeCanonicalBase64(note.rawBytesBase64)
@@ -377,7 +379,7 @@ export async function parseBackupWithIntegrity(raw: string): Promise<LifeOSData>
   return data
 }
 
-export async function prepareBackupRestore(raw: string, current: LifeOSData): Promise<LifeOSData> {
+export async function prepareBackupRestore(raw: string, current: LiveOSData): Promise<LiveOSData> {
   const next = mergeBackupData(current, parseBackup(raw))
   await parseBackupWithIntegrity(JSON.stringify(next))
   return next
@@ -385,15 +387,15 @@ export async function prepareBackupRestore(raw: string, current: LifeOSData): Pr
 
 export async function restoreBackup(
   raw: string,
-  current: LifeOSData,
+  current: LiveOSData,
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   confirmReplacement: () => boolean,
   storageKey = STORAGE_KEY,
-  transform?: (next: LifeOSData) => LifeOSData,
-): Promise<LifeOSData | null> {
+  transform?: (next: LiveOSData) => LiveOSData,
+): Promise<LiveOSData | null> {
   const prepared = await prepareBackupRestore(raw, current)
   const next = transform ? transform(prepared) : prepared
-  if (!validateLifeOSData(next)) throw new Error('This backup could not be prepared for this account.')
+  if (!validateLiveOSData(next)) throw new Error('This backup could not be prepared for this account.')
   if (!confirmReplacement()) return null
 
   let previousRaw: string | null
@@ -419,7 +421,7 @@ export async function restoreBackup(
   return next
 }
 
-export function mergeBackupData(current: LifeOSData, backup: LifeOSData): LifeOSData {
+export function mergeBackupData(current: LiveOSData, backup: LiveOSData): LiveOSData {
   const importedNotes = [...current.importedNotes]
   const knownHashes = new Set(importedNotes.map(note => note.sha256))
   for (const note of backup.importedNotes) if (!knownHashes.has(note.sha256)) importedNotes.push(note)
@@ -433,14 +435,14 @@ export function loadData(storageKey = STORAGE_KEY): LoadResult {
     try {
       return { data: resolvePendingSession(parseBackup(raw, true)), error: null }
     } catch (error) {
-      return { data: emptyData(), error: error instanceof Error ? error.message : 'Saved LifeOS data could not be read.' }
+      return { data: emptyData(), error: error instanceof Error ? error.message : 'Saved LifePortable data could not be read.' }
     }
   } catch {
     return { data: emptyData(), error: 'Browser storage is unavailable. Import a backup before continuing.' }
   }
 }
 
-export function saveData(data: LifeOSData, storageKey = STORAGE_KEY): boolean {
+export function saveData(data: LiveOSData, storageKey = STORAGE_KEY): boolean {
   try {
     localStorage.setItem(storageKey, JSON.stringify(data))
     return true
@@ -457,7 +459,7 @@ export function sessionMinutes(durationMs: number): string {
   return `${hours} hr${hours > 1 ? 's' : ''}${minutes % 60 ? ` ${minutes % 60} min` : ''}`
 }
 
-export function recordUnratedSession(data: LifeOSData, finished: PendingSession): LifeOSData {
+export function recordUnratedSession(data: LiveOSData, finished: PendingSession): LiveOSData {
   const { id, taskId, taskTitle, startedAt, endedAt } = finished
   const session: FocusSession = {
     id, taskId, taskTitle, startedAt, endedAt,
@@ -471,7 +473,7 @@ export function recordUnratedSession(data: LifeOSData, finished: PendingSession)
   return { ...data, pendingSession: null, sessions }
 }
 
-function resolvePendingSession(data: LifeOSData): LifeOSData {
+function resolvePendingSession(data: LiveOSData): LiveOSData {
   // Preserve the first-session choice after reload; keep legacy auto-save for
   // established users who disabled check-ins before this preference existed.
   return data.postFocusAction === undefined && data.sessions.length > 0 &&
