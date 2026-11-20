@@ -31,4 +31,4 @@ This repository contains source code, not personal journal entries or production
 
 ## Public web source mirror
 
-The web source in this repository mirrors [LifePortable](https://github.com/LevPetrogradsky/LifePortable) commit `f4e8c9724e22a53d117a5605e1577b67b0e71342`. The public demo is [lifeos-demo-kappa.vercel.app](https://lifeos-demo-kappa.vercel.app/). The historical Windows portable release remains available in this repository's Releases and is separate from the current web Hub.
+The web source in this repository mirrors [LifePortable](https://github.com/LevPetrogradsky/LifePortable) commit `33caa6e197d860bef8be03a7c262b40f1ae27d69`. The public demo is [lifeos-demo-kappa.vercel.app](https://lifeos-demo-kappa.vercel.app/). The historical Windows portable release remains available in this repository's Releases and is separate from the current web Hub.
